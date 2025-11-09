@@ -8,7 +8,8 @@ import {
   TrendingUp, 
   Package, 
   DollarSign,
-  LogOut 
+  LogOut,
+  ArrowLeftRight
 } from "lucide-react";
 
 const Layout = () => {
@@ -30,6 +31,7 @@ const Layout = () => {
     { to: "/purchases", icon: ShoppingCart, label: "Compras" },
     { to: "/sales", icon: TrendingUp, label: "Vendas" },
     { to: "/stock", icon: Package, label: "Estoque" },
+    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações" },
     { to: "/quotes", icon: DollarSign, label: "Cotação" },
   ];
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { ShoppingCart, TrendingUp, Package, DollarSign } from "lucide-react";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -10,6 +11,8 @@ const Dashboard = () => {
     totalProfit: 0,
     materialsCount: 0,
   });
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [materialData, setMaterialData] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -45,6 +48,67 @@ const Dashboard = () => {
         totalProfit,
         materialsCount: materialsCount || 0,
       });
+
+      // Get monthly data for charts
+      const { data: monthlySales } = await supabase
+        .from("sales")
+        .select("sale_date, total_price, profit")
+        .eq("user_id", user.id)
+        .order("sale_date");
+
+      const { data: monthlyPurchases } = await supabase
+        .from("purchases")
+        .select("purchase_date, total_price")
+        .eq("user_id", user.id)
+        .order("purchase_date");
+
+      // Aggregate by month
+      const monthlyMap = new Map();
+      
+      monthlyPurchases?.forEach(p => {
+        const month = new Date(p.purchase_date).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+        if (!monthlyMap.has(month)) {
+          monthlyMap.set(month, { month, compras: 0, vendas: 0, lucro: 0 });
+        }
+        const data = monthlyMap.get(month);
+        data.compras += Number(p.total_price);
+      });
+
+      monthlySales?.forEach(s => {
+        const month = new Date(s.sale_date).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+        if (!monthlyMap.has(month)) {
+          monthlyMap.set(month, { month, compras: 0, vendas: 0, lucro: 0 });
+        }
+        const data = monthlyMap.get(month);
+        data.vendas += Number(s.total_price);
+        data.lucro += Number(s.profit);
+      });
+
+      setMonthlyData(Array.from(monthlyMap.values()));
+
+      // Get material performance
+      const { data: materialStats } = await supabase
+        .from("sales")
+        .select(`
+          material_id,
+          total_price,
+          profit,
+          materials (name)
+        `)
+        .eq("user_id", user.id);
+
+      const materialMap = new Map();
+      materialStats?.forEach((s: any) => {
+        const name = s.materials.name;
+        if (!materialMap.has(name)) {
+          materialMap.set(name, { material: name, vendas: 0, lucro: 0 });
+        }
+        const data = materialMap.get(name);
+        data.vendas += Number(s.total_price);
+        data.lucro += Number(s.profit);
+      });
+
+      setMaterialData(Array.from(materialMap.values()).slice(0, 5));
     };
 
     fetchStats();
@@ -104,6 +168,63 @@ const Dashboard = () => {
             </Card>
           );
         })}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Movimentação Mensal</CardTitle>
+            <CardDescription>Comparativo de compras, vendas e lucro</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px"
+                  }}
+                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="compras" stroke="#3b82f6" name="Compras" strokeWidth={2} />
+                <Line type="monotone" dataKey="vendas" stroke="#10b981" name="Vendas" strokeWidth={2} />
+                <Line type="monotone" dataKey="lucro" stroke="hsl(var(--primary))" name="Lucro" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Desempenho por Material</CardTitle>
+            <CardDescription>Top 5 materiais mais lucrativos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={materialData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="material" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px"
+                  }}
+                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                />
+                <Legend />
+                <Bar dataKey="vendas" fill="#10b981" name="Vendas" />
+                <Bar dataKey="lucro" fill="hsl(var(--primary))" name="Lucro" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

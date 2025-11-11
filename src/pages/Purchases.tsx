@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ProPlanRequired } from "@/components/ProPlanRequired";
 
 interface Material {
   id: string;
@@ -115,8 +114,7 @@ const Purchases = () => {
   };
 
   return (
-    <ProPlanRequired>
-      <div className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Compras</h1>
@@ -224,8 +222,7 @@ const Purchases = () => {
           </Card>
         ))}
       </div>
-      </div>
-    </ProPlanRequired>
+    </div>
   );
 };
 

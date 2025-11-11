@@ -41,7 +41,10 @@ const Plans = () => {
   const handleCheckout = async () => {
     try {
       setLoading(true);
+      console.log('[CHECKOUT] Iniciando processo...');
+      
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('[CHECKOUT] Sessão obtida:', !!session);
       
       if (!session) {
         toast({
@@ -53,31 +56,43 @@ const Plans = () => {
         return;
       }
 
-      console.log('Iniciando checkout...');
+      console.log('[CHECKOUT] Invocando edge function...');
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
 
-      console.log('Resposta do checkout:', { data, error });
+      console.log('[CHECKOUT] Resposta recebida:', { 
+        hasData: !!data, 
+        hasError: !!error,
+        dataUrl: data?.url,
+        errorDetails: error 
+      });
 
       if (error) {
-        console.error('Erro na invocação:', error);
-        throw error;
+        console.error('[CHECKOUT] Erro na invocação:', error);
+        throw new Error(`Erro ao criar checkout: ${error.message || 'Desconhecido'}`);
       }
 
-      if (!data?.url) {
+      if (!data) {
+        throw new Error('Nenhum dado retornado do servidor');
+      }
+
+      if (!data.url) {
+        console.error('[CHECKOUT] Dados recebidos sem URL:', data);
         throw new Error('URL do checkout não foi retornada');
       }
 
+      console.log('[CHECKOUT] Redirecionando para:', data.url);
       // Redirecionar na mesma aba
       window.location.href = data.url;
     } catch (error) {
-      console.error('Erro ao criar checkout:', error);
+      console.error('[CHECKOUT] Erro capturado:', error);
+      const errorMessage = error instanceof Error ? error.message : "Não foi possível iniciar o checkout. Tente novamente.";
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível iniciar o checkout",
+        title: "Erro no Checkout",
+        description: errorMessage,
         variant: "destructive",
       });
       setLoading(false);

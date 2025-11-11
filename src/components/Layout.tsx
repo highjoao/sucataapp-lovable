@@ -47,10 +47,10 @@ const AppSidebar = () => {
   const isCollapsed = state === "collapsed";
 
   return (
-    <Sidebar collapsible="icon" className="border-r">
-      <SidebarContent>
+    <Sidebar collapsible="icon" className="border-r bg-card">
+      <SidebarContent className="bg-card">
         {!isPro && !isCollapsed && (
-          <div className="p-3 border-b">
+          <div className="p-3 border-b bg-card">
             <Button
               onClick={() => navigate('/plans')}
               size="sm"
@@ -63,8 +63,8 @@ const AppSidebar = () => {
           </div>
         )}
         
-        <SidebarGroup>
-          <SidebarGroupContent>
+        <SidebarGroup className="bg-card">
+          <SidebarGroupContent className="bg-card">
             <SidebarMenu>
               {navItems.map((item) => {
                 const Icon = item.icon;

@@ -28,24 +28,33 @@ const Plans = () => {
         return;
       }
 
+      console.log('Iniciando checkout...');
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
 
-      if (error) throw error;
+      console.log('Resposta do checkout:', { data, error });
 
-      // Open checkout in new tab
-      window.open(data.url, '_blank');
+      if (error) {
+        console.error('Erro na invocação:', error);
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error('URL do checkout não foi retornada');
+      }
+
+      // Redirecionar na mesma aba
+      window.location.href = data.url;
     } catch (error) {
       console.error('Erro ao criar checkout:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível iniciar o checkout",
+        description: error instanceof Error ? error.message : "Não foi possível iniciar o checkout",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };

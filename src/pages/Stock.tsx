@@ -32,42 +32,20 @@ const Stock = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: materials } = await supabase
-      .from("materials")
-      .select("*")
-      .eq("user_id", user.id);
+    const { data, error } = await supabase.rpc("get_user_stock");
 
-    if (!materials) return;
-
-    const stockData: StockItem[] = [];
-
-    for (const material of materials) {
-      const { data: purchases } = await supabase
-        .from("purchases")
-        .select("quantity, unit_price")
-        .eq("material_id", material.id);
-
-      const { data: sales } = await supabase
-        .from("sales")
-        .select("quantity")
-        .eq("material_id", material.id);
-
-      const totalPurchased = purchases?.reduce((sum, p) => sum + Number(p.quantity), 0) || 0;
-      const totalSold = sales?.reduce((sum, s) => sum + Number(s.quantity), 0) || 0;
-      const avgPrice = purchases?.length
-        ? purchases.reduce((sum, p) => sum + Number(p.unit_price), 0) / purchases.length
-        : 0;
-
-      stockData.push({
-        material_id: material.id,
-        material_name: material.name,
-        unit: material.unit,
-        current_stock: totalPurchased - totalSold,
-        avg_purchase_price: avgPrice,
+    if (error) {
+      toast({
+        title: "Erro ao carregar estoque",
+        description: error.message,
+        variant: "destructive",
       });
+      return;
     }
 
-    setStock(stockData);
+    if (data) {
+      setStock(data as StockItem[]);
+    }
   };
 
   useEffect(() => {

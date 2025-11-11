@@ -113,13 +113,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "purchases_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "stock_view"
-            referencedColumns: ["material_id"]
-          },
-          {
             foreignKeyName: "purchases_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -177,13 +170,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sales_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "stock_view"
-            referencedColumns: ["material_id"]
-          },
-          {
             foreignKeyName: "sales_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -227,27 +213,19 @@ export type Database = {
       }
     }
     Views: {
-      stock_view: {
-        Row: {
-          avg_purchase_price: number | null
-          current_stock: number | null
-          material_id: string | null
-          material_name: string | null
-          unit: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "materials_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      get_user_stock: {
+        Args: never
+        Returns: {
+          avg_purchase_price: number
+          current_stock: number
+          material_id: string
+          material_name: string
+          unit: string
+        }[]
+      }
       has_pro_plan: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {

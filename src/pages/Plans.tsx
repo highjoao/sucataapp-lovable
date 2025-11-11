@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Sparkles } from "lucide-react";
+import { Check, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -11,7 +11,32 @@ const Plans = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { subscription, isPro } = useSubscription();
+  const { subscription, isPro, refreshSubscription } = useSubscription();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+
+    if (success === 'true') {
+      toast({
+        title: "Pagamento em Processamento",
+        description: "Sua assinatura está sendo processada. Aguarde alguns instantes.",
+      });
+      // Atualizar status da assinatura após alguns segundos
+      setTimeout(() => {
+        refreshSubscription();
+      }, 3000);
+    }
+
+    if (canceled === 'true') {
+      toast({
+        title: "Checkout Cancelado",
+        description: "O processo de assinatura foi cancelado.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams, toast, refreshSubscription]);
 
   const handleCheckout = async () => {
     try {
@@ -166,7 +191,14 @@ const Plans = () => {
                   onClick={handleCheckout}
                   disabled={loading}
                 >
-                  {loading ? "Carregando..." : "Assinar Agora"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Carregando...
+                    </>
+                  ) : (
+                    "Assinar Agora"
+                  )}
                 </Button>
               )}
             </CardFooter>

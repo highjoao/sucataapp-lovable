@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, TrendingUp, Package, DollarSign } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
+import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const Dashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
+  const { refreshSubscription } = useSubscription();
   const [stats, setStats] = useState({
     totalPurchases: 0,
     totalSales: 0,
@@ -13,6 +20,32 @@ const Dashboard = () => {
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [materialData, setMaterialData] = useState<any[]>([]);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    
+    if (success === 'true') {
+      setShowSuccessAlert(true);
+      toast({
+        title: "Assinatura Ativada!",
+        description: "Bem-vindo ao Plano Pro. Todos os recursos foram desbloqueados!",
+      });
+      
+      // Atualizar status da assinatura
+      setTimeout(() => {
+        refreshSubscription();
+      }, 2000);
+      
+      // Limpar parâmetro da URL
+      setSearchParams({});
+      
+      // Esconder alerta após 10 segundos
+      setTimeout(() => {
+        setShowSuccessAlert(false);
+      }, 10000);
+    }
+  }, [searchParams, toast, refreshSubscription, setSearchParams]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -151,6 +184,16 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Visão geral do seu negócio</p>
       </div>
+
+      {showSuccessAlert && (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+          <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <AlertTitle className="text-green-800 dark:text-green-200">Assinatura Pro Ativada!</AlertTitle>
+          <AlertDescription className="text-green-700 dark:text-green-300">
+            Parabéns! Agora você tem acesso completo a todos os recursos do SucataApp.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => {

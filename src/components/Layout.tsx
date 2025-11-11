@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { 
   Recycle, 
   ShoppingCart, 
@@ -9,13 +10,16 @@ import {
   Package, 
   DollarSign,
   LogOut,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Crown,
+  Sparkles
 } from "lucide-react";
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { isPro } = useSubscription();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -27,23 +31,31 @@ const Layout = () => {
   };
 
   const navItems = [
-    { to: "/dashboard", icon: Package, label: "Dashboard" },
-    { to: "/purchases", icon: ShoppingCart, label: "Compras" },
-    { to: "/sales", icon: TrendingUp, label: "Vendas" },
-    { to: "/stock", icon: Package, label: "Estoque" },
-    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações" },
-    { to: "/quotes", icon: DollarSign, label: "Cotação" },
+    { to: "/dashboard", icon: Package, label: "Dashboard", locked: false },
+    { to: "/purchases", icon: ShoppingCart, label: "Compras", locked: true },
+    { to: "/sales", icon: TrendingUp, label: "Vendas", locked: true },
+    { to: "/stock", icon: Package, label: "Estoque", locked: true },
+    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações", locked: true },
+    { to: "/quotes", icon: DollarSign, label: "Cotação", locked: false },
   ];
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 border-b bg-card">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <Recycle className="h-6 w-6" />
             </div>
-            <span className="text-xl font-bold">SucataApp</span>
+            <div>
+              <span className="text-xl font-bold">SucataApp</span>
+              {isPro && (
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <Sparkles className="h-3 w-3" />
+                  <span className="font-medium">Pro</span>
+                </div>
+              )}
+            </div>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
@@ -51,24 +63,54 @@ const Layout = () => {
         </div>
       </header>
       <div className="flex flex-1">
-        <aside className="w-64 border-r bg-card">
-          <nav className="space-y-2 p-4">
+        <aside className="w-64 border-r bg-card flex flex-col">
+          <nav className="flex-1 space-y-2 p-4">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.to;
+              const isLocked = item.locked && !isPro;
+              
               return (
-                <Link key={item.to} to={item.to}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    className="w-full justify-start"
+                <div key={item.to} className="relative">
+                  <Link 
+                    to={item.to}
+                    onClick={(e) => {
+                      if (isLocked) {
+                        e.preventDefault();
+                        toast({
+                          title: "Recurso Bloqueado",
+                          description: "Atualize para o Plano Pro para acessar este recurso",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
                   >
-                    <Icon className="mr-2 h-5 w-5" />
-                    {item.label}
-                  </Button>
-                </Link>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={`w-full justify-start ${isLocked ? 'opacity-50' : ''}`}
+                    >
+                      <Icon className="mr-2 h-5 w-5" />
+                      {item.label}
+                      {isLocked && <Crown className="ml-auto h-4 w-4 text-primary" />}
+                    </Button>
+                  </Link>
+                </div>
               );
             })}
           </nav>
+
+          {!isPro && (
+            <div className="p-4 border-t">
+              <Button
+                onClick={() => navigate('/plans')}
+                className="w-full"
+                variant="default"
+              >
+                <Crown className="mr-2 h-4 w-4" />
+                Upgrade para Pro
+              </Button>
+            </div>
+          )}
         </aside>
         <main className="flex-1 overflow-auto bg-background">
           <div className="container mx-auto p-6">

@@ -14,6 +14,7 @@ import Stock from "./pages/Stock";
 import Quotes from "./pages/Quotes";
 import Transactions from "./pages/Transactions";
 import NotFound from "./pages/NotFound";
+import Plans from "./pages/Plans";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/plans" element={<Plans />} />
           <Route
             element={
               <ProtectedRoute>

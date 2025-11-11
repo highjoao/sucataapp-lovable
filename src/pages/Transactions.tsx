@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShoppingCart, TrendingUp } from "lucide-react";
+import { ProPlanRequired } from "@/components/ProPlanRequired";
 
 interface Transaction {
   id: string;
@@ -141,7 +142,8 @@ const Transactions = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <ProPlanRequired>
+      <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Movimentações</h1>
         <p className="text-muted-foreground">Histórico completo de compras e vendas</p>
@@ -216,7 +218,8 @@ const Transactions = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ProPlanRequired>
   );
 };
 

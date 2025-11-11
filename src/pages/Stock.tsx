@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ProPlanRequired } from "@/components/ProPlanRequired";
 
 interface StockItem {
   material_id: string;
@@ -107,7 +108,8 @@ const Stock = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <ProPlanRequired>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Estoque</h1>
@@ -209,7 +211,8 @@ const Stock = () => {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </ProPlanRequired>
   );
 };
 

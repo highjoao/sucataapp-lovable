@@ -43,6 +43,27 @@ serve(async (req) => {
     if (!user?.email) throw new Error("Usuário não autenticado");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // First check the local subscriptions table
+    const { data: localSub, error: localSubError } = await supabaseClient
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!localSubError && localSub && localSub.plan_type === 'pro') {
+      logStep("Found local Pro subscription", { planType: localSub.plan_type });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        plan_type: 'pro',
+        subscription_end: localSub.updated_at
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    logStep("No local Pro subscription, checking Stripe");
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     

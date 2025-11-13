@@ -9,7 +9,10 @@ import {
   Package, 
   DollarSign,
   LogOut,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Boxes,
+  Truck,
+  LayoutDashboard
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,11 +30,13 @@ const AppSidebar = () => {
   const location = useLocation();
 
   const navItems = [
-    { to: "/dashboard", icon: Package, label: "Dashboard" },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/materials", icon: Boxes, label: "Materiais" },
+    { to: "/suppliers", icon: Truck, label: "Fornecedores" },
     { to: "/purchases", icon: ShoppingCart, label: "Compras" },
     { to: "/sales", icon: TrendingUp, label: "Vendas" },
     { to: "/stock", icon: Package, label: "Estoque" },
-    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações" },
+    { to: "/transactions", icon: ArrowLeftRight, label: "Transações" },
     { to: "/quotes", icon: DollarSign, label: "Cotação" },
   ];
 

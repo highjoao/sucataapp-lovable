@@ -5,8 +5,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
-import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2 } from "lucide-react";
+import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { QuotesWidget } from "@/components/QuotesWidget";
 
 const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -17,6 +18,8 @@ const Dashboard = () => {
     totalSales: 0,
     totalProfit: 0,
     materialsCount: 0,
+    monthTransactions: 0,
+    stockValue: 0,
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [materialData, setMaterialData] = useState<any[]>([]);
@@ -75,11 +78,51 @@ const Dashboard = () => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
+      // Get transactions this month
+      const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { count: monthTransactions } = await supabase
+        .from("transactions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("transaction_date", firstDayOfMonth);
+
+      // Get stock value (sum of current stock * average purchase price)
+      const { data: stockData } = await supabase
+        .from("stock")
+        .select(`
+          quantity,
+          materials (
+            id,
+            name
+          )
+        `)
+        .eq("user_id", user.id);
+
+      let stockValue = 0;
+      if (stockData) {
+        for (const item of stockData) {
+          if (item.materials) {
+            const { data: avgPrice } = await supabase
+              .from("purchases")
+              .select("unit_price")
+              .eq("material_id", (item.materials as any).id)
+              .eq("user_id", user.id);
+            
+            if (avgPrice && avgPrice.length > 0) {
+              const avg = avgPrice.reduce((sum, p) => sum + Number(p.unit_price), 0) / avgPrice.length;
+              stockValue += Number(item.quantity) * avg;
+            }
+          }
+        }
+      }
+
       setStats({
         totalPurchases,
         totalSales,
         totalProfit,
         materialsCount: materialsCount || 0,
+        monthTransactions: monthTransactions || 0,
+        stockValue,
       });
 
       // Get monthly data for charts
@@ -149,6 +192,20 @@ const Dashboard = () => {
 
   const statCards = [
     {
+      title: "Valor em Estoque",
+      value: `R$ ${stats.stockValue.toFixed(2)}`,
+      description: "Valor atual do estoque",
+      icon: Package,
+      iconColor: "text-orange-500",
+    },
+    {
+      title: "Transações do Mês",
+      value: stats.monthTransactions.toString(),
+      description: "Compras e vendas",
+      icon: ArrowUpDown,
+      iconColor: "text-purple-500",
+    },
+    {
       title: "Total de Compras",
       value: `R$ ${stats.totalPurchases.toFixed(2)}`,
       description: "Valor total investido",
@@ -174,7 +231,7 @@ const Dashboard = () => {
       value: stats.materialsCount.toString(),
       description: "Tipos cadastrados",
       icon: Package,
-      iconColor: "text-orange-500",
+      iconColor: "text-amber-500",
     },
   ];
 
@@ -195,7 +252,7 @@ const Dashboard = () => {
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -213,61 +270,67 @@ const Dashboard = () => {
         })}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Movimentação Mensal</CardTitle>
-            <CardDescription>Comparativo de compras, vendas e lucro</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px"
-                  }}
-                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="compras" stroke="#3b82f6" name="Compras" strokeWidth={2} />
-                <Line type="monotone" dataKey="vendas" stroke="#10b981" name="Vendas" strokeWidth={2} />
-                <Line type="monotone" dataKey="lucro" stroke="hsl(var(--primary))" name="Lucro" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Movimentação Mensal</CardTitle>
+              <CardDescription>Comparativo de compras, vendas e lucro</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px"
+                    }}
+                    formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="compras" stroke="#3b82f6" name="Compras" strokeWidth={2} />
+                  <Line type="monotone" dataKey="vendas" stroke="#10b981" name="Vendas" strokeWidth={2} />
+                  <Line type="monotone" dataKey="lucro" stroke="hsl(var(--primary))" name="Lucro" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Desempenho por Material</CardTitle>
-            <CardDescription>Top 5 materiais mais lucrativos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={materialData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="material" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px"
-                  }}
-                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                />
-                <Legend />
-                <Bar dataKey="vendas" fill="#10b981" name="Vendas" />
-                <Bar dataKey="lucro" fill="hsl(var(--primary))" name="Lucro" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Desempenho por Material</CardTitle>
+              <CardDescription>Top 5 materiais mais lucrativos</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={materialData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="material" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px"
+                    }}
+                    formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                  />
+                  <Legend />
+                  <Bar dataKey="vendas" fill="#10b981" name="Vendas" />
+                  <Bar dataKey="lucro" fill="hsl(var(--primary))" name="Lucro" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <QuotesWidget />
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
 import Quotes from "./pages/Quotes";
 import Transactions from "./pages/Transactions";
+import NewTransactions from "./pages/NewTransactions";
 import Materials from "./pages/Materials";
 import Suppliers from "./pages/Suppliers";
 import NotFound from "./pages/NotFound";
@@ -44,7 +45,7 @@ const App = () => (
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/stock" element={<Stock />} />
-            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/transactions" element={<NewTransactions />} />
             <Route path="/quotes" element={<Quotes />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

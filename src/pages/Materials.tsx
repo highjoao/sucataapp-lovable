@@ -23,9 +23,12 @@ const Materials = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔵 handleSubmit chamado');
     setErrors({});
 
     const result = materialSchema.safeParse(formData);
+    console.log('🔵 Validação:', result.success ? 'SUCESSO' : 'ERRO', result);
+    
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof MaterialFormData, string>> = {};
       result.error.errors.forEach((error) => {
@@ -34,23 +37,36 @@ const Materials = () => {
         }
       });
       setErrors(fieldErrors);
+      console.log('🔴 Erros de validação:', fieldErrors);
       return;
     }
 
+    console.log('🟢 Iniciando criação/atualização do material');
+    
     if (editingMaterial) {
+      console.log('🟡 Modo: EDIÇÃO', editingMaterial.id);
       updateMaterial.mutate({ id: editingMaterial.id, ...result.data } as any, {
         onSuccess: () => {
+          console.log('✅ Material atualizado com sucesso');
           setIsDialogOpen(false);
           setFormData({ name: "", unit_of_measure: "" });
           setEditingMaterial(null);
+        },
+        onError: (error) => {
+          console.error('❌ Erro ao atualizar:', error);
         }
       });
     } else {
+      console.log('🟡 Modo: CRIAÇÃO');
       createMaterial.mutate(result.data as any, {
         onSuccess: () => {
+          console.log('✅ Material criado com sucesso');
           setIsDialogOpen(false);
           setFormData({ name: "", unit_of_measure: "" });
           setEditingMaterial(null);
+        },
+        onError: (error) => {
+          console.error('❌ Erro ao criar:', error);
         }
       });
     }

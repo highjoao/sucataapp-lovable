@@ -87,18 +87,23 @@ const Layout = () => {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-50 border-b bg-card">
-            <div className="flex h-14 items-center gap-4 px-4">
-              <SidebarTrigger className="h-8 w-8" />
+          <header className="sticky top-0 z-50 bg-primary shadow-md">
+            <div className="flex h-16 items-center gap-4 px-6">
+              <SidebarTrigger className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/10" />
               <div className="flex items-center gap-3 flex-1">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Recycle className="h-5 w-5" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground/10">
+                  <Recycle className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <span className="text-lg font-bold">SucataApp</span>
+                  <span className="text-xl font-bold text-primary-foreground">SucataApp</span>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleLogout}
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+              >
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>

@@ -38,14 +38,22 @@ const Materials = () => {
     }
 
     if (editingMaterial) {
-      updateMaterial({ id: editingMaterial.id, ...result.data } as any);
+      updateMaterial({ id: editingMaterial.id, ...result.data } as any, {
+        onSuccess: () => {
+          setIsDialogOpen(false);
+          setFormData({ name: "", unit_of_measure: "" });
+          setEditingMaterial(null);
+        }
+      });
     } else {
-      createMaterial(result.data as any);
+      createMaterial(result.data as any, {
+        onSuccess: () => {
+          setIsDialogOpen(false);
+          setFormData({ name: "", unit_of_measure: "" });
+          setEditingMaterial(null);
+        }
+      });
     }
-    
-    setIsDialogOpen(false);
-    setFormData({ name: "", unit_of_measure: "" });
-    setEditingMaterial(null);
   };
 
   const handleEdit = (material: typeof materials[0]) => {

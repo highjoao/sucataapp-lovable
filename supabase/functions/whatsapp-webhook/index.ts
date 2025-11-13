@@ -149,6 +149,33 @@ serve(async (req) => {
       );
     }
 
+    // Valida valores numéricos extraídos
+    if (entities.quantity <= 0 || entities.quantity > 999999) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Quantidade inválida. Use valores entre 0.01 e 999999.",
+          extracted: entities 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    if (entities.pricePerUnit <= 0 || entities.pricePerUnit > 999999) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Preço inválido. Use valores entre 0.01 e 999999.",
+          extracted: entities 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
     // Busca o ID do material pelo nome
     const material = materials?.find(
       (m: any) => m.name.toLowerCase() === entities.materialName?.toLowerCase()

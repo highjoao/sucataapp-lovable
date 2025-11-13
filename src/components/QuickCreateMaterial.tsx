@@ -36,7 +36,7 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
       return;
     }
 
-    createMaterial(result.data as any, {
+    createMaterial.mutate(result.data as any, {
       onSuccess: (data: any) => {
         setIsOpen(false);
         setFormData({ name: "", unit_of_measure: "" });

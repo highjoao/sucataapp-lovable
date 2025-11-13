@@ -59,3 +59,41 @@ export const transactionSchema = z.object({
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
+
+// Purchase validation schema
+export const purchaseSchema = z.object({
+  materialId: z.string()
+    .uuid("Selecione um material válido")
+    .min(1, "Material é obrigatório"),
+  quantity: z.number()
+    .positive("Quantidade deve ser maior que zero")
+    .max(999999, "Quantidade muito alta"),
+  unitPrice: z.number()
+    .positive("Preço deve ser maior que zero")
+    .max(999999, "Preço muito alto"),
+  notes: z.string()
+    .max(500, "Observações devem ter no máximo 500 caracteres")
+    .optional()
+    .or(z.literal("")),
+});
+
+export type PurchaseFormData = z.infer<typeof purchaseSchema>;
+
+// Sale validation schema
+export const saleSchema = z.object({
+  materialId: z.string()
+    .uuid("Selecione um material válido")
+    .min(1, "Material é obrigatório"),
+  quantity: z.number()
+    .positive("Quantidade deve ser maior que zero")
+    .max(999999, "Quantidade muito alta"),
+  unitPrice: z.number()
+    .positive("Preço deve ser maior que zero")
+    .max(999999, "Preço muito alto"),
+  notes: z.string()
+    .max(500, "Observações devem ter no máximo 500 caracteres")
+    .optional()
+    .or(z.literal("")),
+});
+
+export type SaleFormData = z.infer<typeof saleSchema>;

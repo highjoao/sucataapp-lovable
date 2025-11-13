@@ -103,6 +103,38 @@ const Sales = () => {
 
     const quantity = parseFloat(formData.quantity);
     const unitPrice = parseFloat(formData.unitPrice);
+
+    // Validate inputs
+    if (isNaN(quantity) || quantity <= 0 || quantity > 999999) {
+      toast({
+        title: "Erro de validação",
+        description: "Quantidade deve ser um número positivo entre 0.01 e 999999",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (isNaN(unitPrice) || unitPrice <= 0 || unitPrice > 999999) {
+      toast({
+        title: "Erro de validação",
+        description: "Preço deve ser um número positivo entre 0.01 e 999999",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.notes.length > 500) {
+      toast({
+        title: "Erro de validação",
+        description: "Observações devem ter no máximo 500 caracteres",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     const totalPrice = quantity * unitPrice;
     const costPrice = await calculateCostPrice(formData.materialId, quantity);
     const profit = totalPrice - costPrice;
@@ -179,6 +211,8 @@ const Sales = () => {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
+                  max="999999"
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   required
@@ -189,6 +223,8 @@ const Sales = () => {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
+                  max="999999"
                   value={formData.unitPrice}
                   onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
                   required
@@ -200,6 +236,7 @@ const Sales = () => {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Adicione observações (opcional)"
+                  maxLength={500}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>

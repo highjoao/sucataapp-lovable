@@ -15,6 +15,8 @@ import { useSuppliers } from "@/hooks/useSuppliers";
 import { transactionSchema, type TransactionFormData } from "@/lib/validations";
 import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
 import { VoiceRecognition } from "@/components/VoiceRecognition";
+import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
+import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
 import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle } from "lucide-react";
 
 const NewTransactions = () => {
@@ -238,6 +240,9 @@ const NewTransactions = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <QuickCreateMaterial 
+                  onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })} 
+                />
                 {errors.material_id && <p className="text-sm text-destructive">{errors.material_id}</p>}
               </div>
               {formData.type === "BUY" && (
@@ -258,6 +263,9 @@ const NewTransactions = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <QuickCreateSupplier 
+                    onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })} 
+                  />
                 </div>
               )}
               <div className="space-y-2">

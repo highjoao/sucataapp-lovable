@@ -70,20 +70,8 @@ export const QuotesWidget = () => {
     setIsLoading(true);
     
     try {
-      // API AwesomeAPI para Dólar
-      const usdResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
-      const usdData = await usdResponse.json();
-      
-      // Simular dados de commodities (Alumínio e Cobre)
-      // Em produção, usar APIs reais como Metal Prices API ou similar
+      // Dados simulados de commodities (sempre disponíveis)
       const quotesData: Quote[] = [
-        {
-          name: "Dólar",
-          symbol: "USD/BRL",
-          price: parseFloat(usdData.USDBRL.bid),
-          variation: parseFloat(usdData.USDBRL.pctChange),
-          lastUpdate: new Date(parseInt(usdData.USDBRL.timestamp) * 1000).toLocaleDateString("pt-BR"),
-        },
         {
           name: "Alumínio",
           symbol: "AL",
@@ -100,6 +88,23 @@ export const QuotesWidget = () => {
         },
       ];
 
+      // Tenta buscar cotação do dólar, mas não falha se não conseguir
+      try {
+        const usdResponse = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
+        if (usdResponse.ok) {
+          const usdData = await usdResponse.json();
+          quotesData.unshift({
+            name: "Dólar",
+            symbol: "USD/BRL",
+            price: parseFloat(usdData.USDBRL.bid),
+            variation: parseFloat(usdData.USDBRL.pctChange),
+            lastUpdate: new Date(parseInt(usdData.USDBRL.timestamp) * 1000).toLocaleDateString("pt-BR"),
+          });
+        }
+      } catch (usdError) {
+        console.log("Não foi possível buscar cotação do dólar:", usdError);
+      }
+
       setQuotes(quotesData);
       setLastUpdate(new Date());
       setCachedQuotes(quotesData);
@@ -112,10 +117,32 @@ export const QuotesWidget = () => {
       }
     } catch (error) {
       console.error("Erro ao buscar cotações:", error);
+      
+      // Fallback para dados simulados se tudo falhar
+      const fallbackQuotes: Quote[] = [
+        {
+          name: "Alumínio",
+          symbol: "AL",
+          price: 2.45,
+          variation: 1.2,
+          lastUpdate: new Date().toLocaleDateString("pt-BR"),
+        },
+        {
+          name: "Cobre",
+          symbol: "CU",
+          price: 8.75,
+          variation: -0.8,
+          lastUpdate: new Date().toLocaleDateString("pt-BR"),
+        },
+      ];
+      
+      setQuotes(fallbackQuotes);
+      setLastUpdate(new Date());
+      
       toast({
-        title: "Erro ao buscar cotações",
-        description: "Não foi possível atualizar as cotações. Tente novamente mais tarde.",
-        variant: "destructive",
+        title: "Modo offline",
+        description: "Exibindo cotações simuladas. Tente atualizar mais tarde.",
+        variant: "default",
       });
     } finally {
       setIsLoading(false);

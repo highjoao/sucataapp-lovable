@@ -38,7 +38,7 @@ const Materials = () => {
     }
 
     if (editingMaterial) {
-      updateMaterial({ id: editingMaterial.id, ...result.data } as any, {
+      updateMaterial.mutate({ id: editingMaterial.id, ...result.data } as any, {
         onSuccess: () => {
           setIsDialogOpen(false);
           setFormData({ name: "", unit_of_measure: "" });
@@ -46,7 +46,7 @@ const Materials = () => {
         }
       });
     } else {
-      createMaterial(result.data as any, {
+      createMaterial.mutate(result.data as any, {
         onSuccess: () => {
           setIsDialogOpen(false);
           setFormData({ name: "", unit_of_measure: "" });
@@ -67,7 +67,7 @@ const Materials = () => {
 
   const handleDelete = (id: string) => {
     if (confirm("Tem certeza que deseja excluir este material?")) {
-      deleteMaterial(id);
+      deleteMaterial.mutate(id);
     }
   };
 

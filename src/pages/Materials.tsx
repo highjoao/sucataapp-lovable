@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useMaterials } from "@/hooks/useMaterials";
-import { materialSchema, type MaterialFormData } from "@/lib/validations";
+import { materialSchema } from "@/lib/validations";
 import { Plus, Pencil, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,60 +15,51 @@ const Materials = () => {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<{ id: string; name: string; unit_of_measure: string } | null>(null);
-  const [formData, setFormData] = useState<MaterialFormData>({
+  const [formData, setFormData] = useState({
     name: "",
     unit_of_measure: "",
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof MaterialFormData, string>>>({});
+  const [errors, setErrors] = useState<{ name?: string; unit_of_measure?: string }>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔵 handleSubmit chamado');
     setErrors({});
 
     const result = materialSchema.safeParse(formData);
-    console.log('🔵 Validação:', result.success ? 'SUCESSO' : 'ERRO', result);
     
     if (!result.success) {
-      const fieldErrors: Partial<Record<keyof MaterialFormData, string>> = {};
+      const fieldErrors: { name?: string; unit_of_measure?: string } = {};
       result.error.errors.forEach((error) => {
         if (error.path[0]) {
-          fieldErrors[error.path[0] as keyof MaterialFormData] = error.message;
+          fieldErrors[error.path[0] as keyof typeof fieldErrors] = error.message;
         }
       });
       setErrors(fieldErrors);
-      console.log('🔴 Erros de validação:', fieldErrors);
       return;
     }
 
-    console.log('🟢 Iniciando criação/atualização do material');
-    
     if (editingMaterial) {
-      console.log('🟡 Modo: EDIÇÃO', editingMaterial.id);
-      updateMaterial.mutate({ id: editingMaterial.id, ...result.data } as any, {
-        onSuccess: () => {
-          console.log('✅ Material atualizado com sucesso');
-          setIsDialogOpen(false);
-          setFormData({ name: "", unit_of_measure: "" });
-          setEditingMaterial(null);
-        },
-        onError: (error) => {
-          console.error('❌ Erro ao atualizar:', error);
+      updateMaterial.mutate(
+        { id: editingMaterial.id, ...result.data } as any,
+        {
+          onSuccess: () => {
+            setIsDialogOpen(false);
+            setFormData({ name: "", unit_of_measure: "" });
+            setEditingMaterial(null);
+          },
         }
-      });
+      );
     } else {
-      console.log('🟡 Modo: CRIAÇÃO');
-      createMaterial.mutate(result.data as any, {
-        onSuccess: () => {
-          console.log('✅ Material criado com sucesso');
-          setIsDialogOpen(false);
-          setFormData({ name: "", unit_of_measure: "" });
-          setEditingMaterial(null);
-        },
-        onError: (error) => {
-          console.error('❌ Erro ao criar:', error);
+      createMaterial.mutate(
+        result.data as any,
+        {
+          onSuccess: () => {
+            setIsDialogOpen(false);
+            setFormData({ name: "", unit_of_measure: "" });
+            setEditingMaterial(null);
+          },
         }
-      });
+      );
     }
   };
 
@@ -87,11 +78,13 @@ const Materials = () => {
     }
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setFormData({ name: "", unit_of_measure: "" });
-    setEditingMaterial(null);
-    setErrors({});
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setFormData({ name: "", unit_of_measure: "" });
+      setEditingMaterial(null);
+      setErrors({});
+    }
   };
 
   return (
@@ -103,7 +96,7 @@ const Materials = () => {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
               Novo Material
             </Button>
@@ -137,7 +130,7 @@ const Materials = () => {
                 {errors.unit_of_measure && <p className="text-sm text-destructive">{errors.unit_of_measure}</p>}
               </div>
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={handleDialogClose}>
+                <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={isCreating || isUpdating}>

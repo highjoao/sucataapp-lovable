@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 interface Material {
   id: string;
   name: string;
-  unit: string;
+  unit_of_measure: string;
 }
 
 interface Sale {
@@ -26,7 +26,7 @@ interface Sale {
   profit: number;
   sale_date: string;
   notes: string | null;
-  materials: { name: string; unit: string };
+  materials: { name: string; unit_of_measure: string };
 }
 
 const Sales = () => {
@@ -64,7 +64,7 @@ const Sales = () => {
       .from("sales")
       .select(`
         *,
-        materials (name, unit)
+        materials (name, unit_of_measure)
       `)
       .eq("user_id", user.id)
       .order("sale_date", { ascending: false });
@@ -166,11 +166,11 @@ const Sales = () => {
                     <SelectValue placeholder="Selecione o material" />
                   </SelectTrigger>
                   <SelectContent>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.name} ({material.unit})
-                      </SelectItem>
-                    ))}
+                  {materials.map((material) => (
+                    <SelectItem key={material.id} value={material.id}>
+                      {material.name} ({material.unit_of_measure})
+                    </SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -231,7 +231,7 @@ const Sales = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Quantidade:</span>
                   <span className="font-medium">
-                    {sale.quantity} {sale.materials.unit}
+                    {sale.quantity} {sale.materials.unit_of_measure}
                   </span>
                 </div>
                 <div className="flex justify-between">

@@ -13,6 +13,8 @@ import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
 import Quotes from "./pages/Quotes";
 import Transactions from "./pages/Transactions";
+import Materials from "./pages/Materials";
+import Suppliers from "./pages/Suppliers";
 import NotFound from "./pages/NotFound";
 import Plans from "./pages/Plans";
 
@@ -37,6 +39,8 @@ const App = () => (
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/materials" element={<Materials />} />
+            <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/stock" element={<Stock />} />

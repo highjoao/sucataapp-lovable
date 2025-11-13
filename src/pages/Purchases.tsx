@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 interface Material {
   id: string;
   name: string;
-  unit: string;
+  unit_of_measure: string;
 }
 
 interface Purchase {
@@ -23,7 +23,7 @@ interface Purchase {
   total_price: number;
   purchase_date: string;
   notes: string | null;
-  materials: { name: string; unit: string };
+  materials: { name: string; unit_of_measure: string };
 }
 
 const Purchases = () => {
@@ -61,7 +61,7 @@ const Purchases = () => {
       .from("purchases")
       .select(`
         *,
-        materials (name, unit)
+        materials (name, unit_of_measure)
       `)
       .eq("user_id", user.id)
       .order("purchase_date", { ascending: false });
@@ -142,11 +142,11 @@ const Purchases = () => {
                     <SelectValue placeholder="Selecione o material" />
                   </SelectTrigger>
                   <SelectContent>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.name} ({material.unit})
-                      </SelectItem>
-                    ))}
+                  {materials.map((material) => (
+                    <SelectItem key={material.id} value={material.id}>
+                      {material.name} ({material.unit_of_measure})
+                    </SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -200,7 +200,7 @@ const Purchases = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Quantidade:</span>
                   <span className="font-medium">
-                    {purchase.quantity} {purchase.materials.unit}
+                    {purchase.quantity} {purchase.materials.unit_of_measure}
                   </span>
                 </div>
                 <div className="flex justify-between">

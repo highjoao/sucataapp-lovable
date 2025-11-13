@@ -1,1 +1,4 @@
 project_id = "ivvcfgyzoedxkkiwbsnv"
+
+[functions.whatsapp-webhook]
+verify_jwt = false  # Desabilita JWT pois usamos x-api-key customizada

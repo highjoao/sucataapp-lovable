@@ -8,11 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMaterials } from "@/hooks/useMaterials";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { transactionSchema, type TransactionFormData } from "@/lib/validations";
-import { Plus, ShoppingCart, TrendingUp, ArrowUpDown } from "lucide-react";
+import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
+import { VoiceRecognition } from "@/components/VoiceRecognition";
+import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle } from "lucide-react";
 
 const NewTransactions = () => {
   const { transactions, isLoading, createTransaction, isCreating, stockOverview, isLoadingStock } = useTransactions();
@@ -28,6 +31,40 @@ const NewTransactions = () => {
     price_per_unit: 0,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormData, string>>>({});
+  const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
+  const [confidenceScore, setConfidenceScore] = useState<number>(0);
+
+  const handleVoiceTranscript = (transcript: string) => {
+    // Extrai entidades do texto usando PLN
+    const entities = extractEntitiesFromText(transcript, materials);
+    const score = calculateConfidenceScore(entities);
+    const feedback = getExtractionFeedback(entities);
+    
+    setConfidenceScore(score);
+    setNlpFeedback(feedback);
+
+    // Pré-preenche o formulário com os dados extraídos
+    if (entities.type) {
+      setFormData((prev) => ({ ...prev, type: entities.type! }));
+    }
+    
+    if (entities.quantity && entities.quantity > 0) {
+      setFormData((prev) => ({ ...prev, quantity: entities.quantity! }));
+    }
+    
+    if (entities.materialName) {
+      const material = materials.find(
+        (m) => m.name.toLowerCase() === entities.materialName?.toLowerCase()
+      );
+      if (material) {
+        setFormData((prev) => ({ ...prev, material_id: material.id }));
+      }
+    }
+    
+    if (entities.pricePerUnit && entities.pricePerUnit > 0) {
+      setFormData((prev) => ({ ...prev, price_per_unit: entities.pricePerUnit! }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +91,8 @@ const NewTransactions = () => {
       quantity: 0,
       price_per_unit: 0,
     });
+    setNlpFeedback([]);
+    setConfidenceScore(0);
   };
 
   const handleDialogClose = () => {
@@ -128,14 +167,44 @@ const NewTransactions = () => {
               Nova Transação
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Transação</DialogTitle>
               <DialogDescription>
                 Registre uma compra ou venda. O estoque será atualizado automaticamente.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            
+            <div className="space-y-4">
+              {/* Reconhecimento de Voz */}
+              <VoiceRecognition 
+                onTranscript={handleVoiceTranscript}
+                isDisabled={isCreating}
+              />
+
+              {/* Feedback do PLN */}
+              {nlpFeedback.length > 0 && (
+                <Alert variant={confidenceScore === 100 ? "default" : "destructive"}>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="font-semibold">
+                          Confiança: {confidenceScore}%
+                        </span>
+                      </div>
+                      {nlpFeedback.map((feedback, idx) => (
+                        <p key={idx} className="text-sm">
+                          {feedback}
+                        </p>
+                      ))}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo de Transação*</Label>
                 <Select
@@ -230,7 +299,8 @@ const NewTransactions = () => {
                   {isCreating ? "Salvando..." : "Salvar Transação"}
                 </Button>
               </div>
-            </form>
+              </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -351,6 +351,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_default_materials: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       get_user_stock: {
         Args: never
         Returns: {

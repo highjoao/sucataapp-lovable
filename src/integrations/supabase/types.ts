@@ -19,21 +19,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          unit: string
+          unit_of_measure: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          unit?: string
+          unit_of_measure?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          unit?: string
+          unit_of_measure?: string
           user_id?: string
         }
         Relationships: [
@@ -178,6 +178,45 @@ export type Database = {
           },
         ]
       }
+      stock: {
+        Row: {
+          id: string
+          material_id: string
+          quantity: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          material_id: string
+          quantity?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          material_id?: string
+          quantity?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: true
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -210,6 +249,99 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact: string | null
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          contact?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          contact?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          material_id: string
+          price_per_unit: number
+          quantity: number
+          supplier_id: string | null
+          transaction_date: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          material_id: string
+          price_per_unit: number
+          quantity: number
+          supplier_id?: string | null
+          transaction_date?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          material_id?: string
+          price_per_unit?: number
+          quantity?: number
+          supplier_id?: string | null
+          transaction_date?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

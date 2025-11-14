@@ -6,8 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2, ArrowUpDown } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { QuotesWidget } from "@/components/QuotesWidget";
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,6 +25,8 @@ const Dashboard = () => {
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [materialData, setMaterialData] = useState<any[]>([]);
+  const [purchasePieData, setPurchasePieData] = useState<any[]>([]);
+  const [salesPieData, setSalesPieData] = useState<any[]>([]);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
   useEffect(() => {
@@ -185,6 +189,58 @@ const Dashboard = () => {
       });
 
       setMaterialData(Array.from(materialMap.values()).slice(0, 5));
+
+      // Get purchase distribution by material
+      const { data: purchasesByMaterial } = await supabase
+        .from("purchases")
+        .select(`
+          material_id,
+          quantity,
+          total_price,
+          materials (name)
+        `)
+        .eq("user_id", user.id);
+
+      const purchaseMap = new Map();
+      purchasesByMaterial?.forEach((p: any) => {
+        const name = p.materials.name;
+        if (!purchaseMap.has(name)) {
+          purchaseMap.set(name, { name, value: 0 });
+        }
+        const data = purchaseMap.get(name);
+        data.value += Number(p.total_price);
+      });
+
+      const topPurchases = Array.from(purchaseMap.values())
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 8);
+      setPurchasePieData(topPurchases);
+
+      // Get sales distribution by material
+      const { data: salesByMaterial } = await supabase
+        .from("sales")
+        .select(`
+          material_id,
+          quantity,
+          total_price,
+          materials (name)
+        `)
+        .eq("user_id", user.id);
+
+      const salesMap = new Map();
+      salesByMaterial?.forEach((s: any) => {
+        const name = s.materials.name;
+        if (!salesMap.has(name)) {
+          salesMap.set(name, { name, value: 0 });
+        }
+        const data = salesMap.get(name);
+        data.value += Number(s.total_price);
+      });
+
+      const topSales = Array.from(salesMap.values())
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 8);
+      setSalesPieData(topSales);
     };
 
     fetchStats();
@@ -276,6 +332,78 @@ const Dashboard = () => {
             </Link>
           );
         })}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribuição de Compras</CardTitle>
+            <CardDescription>Top 8 materiais mais comprados</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={purchasePieData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {purchasePieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px"
+                  }}
+                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribuição de Vendas</CardTitle>
+            <CardDescription>Top 8 materiais mais vendidos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={salesPieData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {salesPieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px"
+                  }}
+                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

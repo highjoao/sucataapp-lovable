@@ -42,7 +42,8 @@ const Transactions = () => {
           unit_price,
           total_price,
           notes,
-          materials (name, unit_of_measure)
+          materials (name, unit_of_measure),
+          suppliers (name)
         `)
         .eq("user_id", user.id)
         .order("purchase_date", { ascending: false });
@@ -75,6 +76,7 @@ const Transactions = () => {
           unit: p.materials.unit_of_measure,
           unitPrice: p.unit_price,
           totalPrice: p.total_price,
+          supplier: p.suppliers?.name,
           notes: p.notes,
         });
       });
@@ -124,7 +126,8 @@ const Transactions = () => {
           <TableHead>Quantidade</TableHead>
           <TableHead>Preço Unit.</TableHead>
           <TableHead>Total</TableHead>
-          {data[0]?.type === "sale" && <TableHead>Lucro</TableHead>}
+          <TableHead>Fornecedor</TableHead>
+          {data.some(t => t.type === "sale") && <TableHead>Lucro</TableHead>}
           <TableHead>Observações</TableHead>
         </TableRow>
       </TableHeader>
@@ -145,6 +148,9 @@ const Transactions = () => {
             </TableCell>
             <TableCell>R$ {transaction.unitPrice.toFixed(2)}</TableCell>
             <TableCell className="font-bold">R$ {transaction.totalPrice.toFixed(2)}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {transaction.supplier || "-"}
+            </TableCell>
             {transaction.type === "sale" && (
               <TableCell>
                 <Badge variant={transaction.profit && transaction.profit > 0 ? "default" : "destructive"}>

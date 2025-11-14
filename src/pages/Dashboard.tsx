@@ -213,7 +213,7 @@ const Dashboard = () => {
       description: "Valor total investido",
       icon: ShoppingCart,
       iconColor: "text-blue-500",
-      link: "/purchases",
+      link: "/transactions?type=BUY",
     },
     {
       title: "Total de Vendas",
@@ -221,7 +221,7 @@ const Dashboard = () => {
       description: "Valor total vendido",
       icon: TrendingUp,
       iconColor: "text-green-500",
-      link: "/sales",
+      link: "/transactions?type=SELL",
     },
     {
       title: "Lucro Total",

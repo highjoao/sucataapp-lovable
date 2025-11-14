@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +21,10 @@ interface Transaction {
 }
 
 const Transactions = () => {
+  const [searchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -98,6 +101,15 @@ const Transactions = () => {
     fetchTransactions();
   }, []);
 
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    if (typeParam === "BUY") {
+      setActiveTab("purchases");
+    } else if (typeParam === "SELL") {
+      setActiveTab("sales");
+    }
+  }, [searchParams]);
+
   const purchases = transactions.filter(t => t.type === "purchase");
   const sales = transactions.filter(t => t.type === "sale");
 
@@ -147,7 +159,7 @@ const Transactions = () => {
         <p className="text-muted-foreground">Histórico completo de compras e vendas</p>
       </div>
 
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="all">Todas</TabsTrigger>
           <TabsTrigger value="purchases">

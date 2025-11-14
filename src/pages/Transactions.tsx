@@ -16,6 +16,7 @@ interface Transaction {
   unit: string;
   unitPrice: number;
   totalPrice: number;
+  supplier?: string;
   profit?: number;
   notes?: string;
 }
@@ -41,7 +42,7 @@ const Transactions = () => {
           unit_price,
           total_price,
           notes,
-          materials (name, unit)
+          materials (name, unit_of_measure)
         `)
         .eq("user_id", user.id)
         .order("purchase_date", { ascending: false });
@@ -57,7 +58,7 @@ const Transactions = () => {
           total_price,
           profit,
           notes,
-          materials (name, unit)
+          materials (name, unit_of_measure)
         `)
         .eq("user_id", user.id)
         .order("sale_date", { ascending: false });
@@ -71,7 +72,7 @@ const Transactions = () => {
           date: p.purchase_date,
           material: p.materials.name,
           quantity: p.quantity,
-          unit: p.materials.unit,
+          unit: p.materials.unit_of_measure,
           unitPrice: p.unit_price,
           totalPrice: p.total_price,
           notes: p.notes,
@@ -85,7 +86,7 @@ const Transactions = () => {
           date: s.sale_date,
           material: s.materials.name,
           quantity: s.quantity,
-          unit: s.materials.unit,
+          unit: s.materials.unit_of_measure,
           unitPrice: s.unit_price,
           totalPrice: s.total_price,
           profit: s.profit,
@@ -113,11 +114,12 @@ const Transactions = () => {
   const purchases = transactions.filter(t => t.type === "purchase");
   const sales = transactions.filter(t => t.type === "sale");
 
-  const TransactionTable = ({ data }: { data: Transaction[] }) => (
+  const TransactionTable = ({ data, showType = false }: { data: Transaction[], showType?: boolean }) => (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Data</TableHead>
+          {showType && <TableHead>Tipo</TableHead>}
           <TableHead>Material</TableHead>
           <TableHead>Quantidade</TableHead>
           <TableHead>Preço Unit.</TableHead>
@@ -130,6 +132,13 @@ const Transactions = () => {
         {data.map((transaction) => (
           <TableRow key={transaction.id}>
             <TableCell>{new Date(transaction.date).toLocaleDateString("pt-BR")}</TableCell>
+            {showType && (
+              <TableCell>
+                <Badge variant={transaction.type === "purchase" ? "secondary" : "default"}>
+                  {transaction.type === "purchase" ? "Compra" : "Venda"}
+                </Badge>
+              </TableCell>
+            )}
             <TableCell className="font-medium">{transaction.material}</TableCell>
             <TableCell>
               {transaction.quantity} {transaction.unit}
@@ -186,7 +195,7 @@ const Transactions = () => {
               ) : transactions.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Nenhuma movimentação registrada</p>
               ) : (
-                <TransactionTable data={transactions} />
+                <TransactionTable data={transactions} showType={true} />
               )}
             </CardContent>
           </Card>

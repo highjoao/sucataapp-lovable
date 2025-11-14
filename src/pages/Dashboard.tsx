@@ -261,7 +261,7 @@ const Dashboard = () => {
       description: "Compras e vendas",
       icon: ArrowUpDown,
       iconColor: "text-purple-500",
-      link: "/new-transactions",
+      link: "/transactions",
     },
     {
       title: "Total de Compras",

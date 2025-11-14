@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { QuotesWidget } from "@/components/QuotesWidget";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -83,14 +82,18 @@ const Dashboard = () => {
         .eq("user_id", user.id);
 
       // Get transactions this month
-      const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      
       const { count: monthTransactions } = await supabase
         .from("transactions")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .gte("transaction_date", firstDayOfMonth);
+        .gte("transaction_date", firstDayOfMonth)
+        .lte("transaction_date", lastDayOfMonth);
 
-      // Get stock value (sum of current stock * average purchase price)
+      // Get stock value (sum of current stock * last purchase price)
       const { data: stockData } = await supabase
         .from("stock")
         .select(`
@@ -100,21 +103,25 @@ const Dashboard = () => {
             name
           )
         `)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .gt("quantity", 0);
 
       let stockValue = 0;
       if (stockData) {
         for (const item of stockData) {
-          if (item.materials) {
-            const { data: avgPrice } = await supabase
+          if (item.materials && Number(item.quantity) > 0) {
+            // Buscar última compra deste material
+            const { data: lastPurchase } = await supabase
               .from("purchases")
               .select("unit_price")
               .eq("material_id", (item.materials as any).id)
-              .eq("user_id", user.id);
+              .eq("user_id", user.id)
+              .order("purchase_date", { ascending: false })
+              .limit(1)
+              .single();
             
-            if (avgPrice && avgPrice.length > 0) {
-              const avg = avgPrice.reduce((sum, p) => sum + Number(p.unit_price), 0) / avgPrice.length;
-              stockValue += Number(item.quantity) * avg;
+            if (lastPurchase) {
+              stockValue += Number(item.quantity) * Number(lastPurchase.unit_price);
             }
           }
         }
@@ -462,10 +469,6 @@ const Dashboard = () => {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </div>
-
-        <div>
-          <QuotesWidget />
         </div>
       </div>
     </div>

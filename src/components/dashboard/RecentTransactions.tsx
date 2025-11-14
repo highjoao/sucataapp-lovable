@@ -4,14 +4,88 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTransactions } from "@/hooks/useTransactions";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
-export const RecentTransactions = () => {
-  const { transactions, isLoading, error } = useTransactions();
+type Transaction = {
+  id: string;
+  type: 'BUY' | 'SELL';
+  material_name: string;
+  unit: string;
+  quantity: number;
+  unit_price: number;
+  date: string;
+};
 
-  // Pegar apenas as 5 transações mais recentes
-  const recentTransactions = transactions.slice(0, 5);
+export const RecentTransactions = () => {
+  // Buscar compras e vendas e unificar em uma lista
+  const { data: transactions = [], isLoading, error } = useQuery({
+    queryKey: ["recent-transactions"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Buscar compras
+      const { data: purchases, error: purchasesError } = await supabase
+        .from("purchases")
+        .select(`
+          id,
+          quantity,
+          unit_price,
+          purchase_date,
+          materials (name, unit_of_measure)
+        `)
+        .eq("user_id", user.id)
+        .order("purchase_date", { ascending: false })
+        .limit(5);
+
+      if (purchasesError) throw purchasesError;
+
+      // Buscar vendas
+      const { data: sales, error: salesError } = await supabase
+        .from("sales")
+        .select(`
+          id,
+          quantity,
+          unit_price,
+          sale_date,
+          materials (name, unit_of_measure)
+        `)
+        .eq("user_id", user.id)
+        .order("sale_date", { ascending: false })
+        .limit(5);
+
+      if (salesError) throw salesError;
+
+      // Unificar e mapear para formato comum
+      const allTransactions: Transaction[] = [
+        ...(purchases || []).map((p: any) => ({
+          id: p.id,
+          type: 'BUY' as const,
+          material_name: p.materials?.name || '',
+          unit: p.materials?.unit_of_measure || '',
+          quantity: Number(p.quantity),
+          unit_price: Number(p.unit_price),
+          date: p.purchase_date,
+        })),
+        ...(sales || []).map((s: any) => ({
+          id: s.id,
+          type: 'SELL' as const,
+          material_name: s.materials?.name || '',
+          unit: s.materials?.unit_of_measure || '',
+          quantity: Number(s.quantity),
+          unit_price: Number(s.unit_price),
+          date: s.sale_date,
+        })),
+      ];
+
+      // Ordenar por data (mais recente primeiro) e pegar apenas 5
+      return allTransactions
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
+    },
+  });
 
   return (
     <Card>
@@ -46,7 +120,7 @@ export const RecentTransactions = () => {
         )}
 
         {/* Estado vazio */}
-        {!isLoading && !error && recentTransactions.length === 0 && (
+        {!isLoading && !error && transactions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <PackageX className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
@@ -56,17 +130,17 @@ export const RecentTransactions = () => {
         )}
 
         {/* Renderização da lista */}
-        {!isLoading && !error && recentTransactions.length > 0 && (
+        {!isLoading && !error && transactions.length > 0 && (
           <div className="space-y-4">
-            {recentTransactions.map((transaction) => {
-              const totalValue = Number(transaction.quantity) * Number(transaction.price_per_unit);
+            {transactions.map((transaction) => {
+              const totalValue = transaction.quantity * transaction.unit_price;
               const formattedValue = new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
               }).format(totalValue);
 
               const formattedDate = format(
-                new Date(transaction.transaction_date),
+                new Date(transaction.date),
                 'dd/MM/yyyy'
               );
 
@@ -87,20 +161,14 @@ export const RecentTransactions = () => {
                         {transaction.type === 'BUY' ? 'COMPRA' : 'VENDA'}
                       </Badge>
                       <span className="text-base font-semibold">
-                        {transaction.materials?.name}
+                        {transaction.material_name}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span>
-                        {Number(transaction.quantity).toFixed(2)}{' '}
-                        {transaction.materials?.unit_of_measure}
+                        {transaction.quantity.toFixed(2)} {transaction.unit}
                       </span>
                       <span>{formattedDate}</span>
-                      {transaction.suppliers && (
-                        <span className="text-xs">
-                          Fornecedor: {transaction.suppliers.name}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <div className="text-right">

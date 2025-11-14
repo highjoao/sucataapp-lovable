@@ -70,6 +70,14 @@ const Suppliers = () => {
     setErrors({});
   };
 
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      handleDialogClose();
+    } else {
+      setIsDialogOpen(true);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -77,9 +85,9 @@ const Suppliers = () => {
           <h1 className="text-3xl font-bold">Fornecedores</h1>
           <p className="text-muted-foreground">Gerencie seus fornecedores de materiais</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
               Novo Fornecedor
             </Button>

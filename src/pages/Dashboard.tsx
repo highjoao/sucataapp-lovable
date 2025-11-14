@@ -83,15 +83,15 @@ const Dashboard = () => {
 
       // Get transactions this month
       const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       
       const { count: monthTransactions } = await supabase
         .from("transactions")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .gte("transaction_date", firstDayOfMonth)
-        .lte("transaction_date", lastDayOfMonth);
+        .gte("created_at", firstDayOfMonth.toISOString())
+        .lte("created_at", lastDayOfMonth.toISOString());
 
       // Get stock value (sum of current stock * last purchase price)
       const { data: stockData } = await supabase

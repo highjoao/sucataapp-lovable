@@ -242,7 +242,7 @@ const Stock = () => {
                 <div className="border-t pt-2">
                   <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
                   <p className="text-lg font-bold">
-                    R$ {(item.current_stock * item.avg_purchase_price).toFixed(2)}
+                    R$ {item.total_stock_value.toFixed(2)}
                   </p>
                 </div>
               </div>

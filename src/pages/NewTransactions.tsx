@@ -225,47 +225,51 @@ const NewTransactions = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="material">Material*</Label>
-                <Select
-                  value={formData.material_id}
-                  onValueChange={(value) => setFormData({ ...formData, material_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o material" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.name} ({material.unit_of_measure})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateMaterial 
-                  onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })} 
-                />
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.material_id}
+                    onValueChange={(value) => setFormData({ ...formData, material_id: value })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione o material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {materials.map((material) => (
+                        <SelectItem key={material.id} value={material.id}>
+                          {material.name} ({material.unit_of_measure})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <QuickCreateMaterial 
+                    onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })} 
+                  />
+                </div>
                 {errors.material_id && <p className="text-sm text-destructive">{errors.material_id}</p>}
               </div>
               {formData.type === "BUY" && (
                 <div className="space-y-2">
                   <Label htmlFor="supplier">Fornecedor</Label>
-                  <Select
-                    value={formData.supplier_id}
-                    onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o fornecedor (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <QuickCreateSupplier 
-                    onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })} 
-                  />
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.supplier_id}
+                      onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione o fornecedor (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <QuickCreateSupplier 
+                      onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })} 
+                    />
+                  </div>
                 </div>
               )}
               <div className="space-y-2">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
@@ -197,6 +197,7 @@ const Dashboard = () => {
       description: "Valor atual do estoque",
       icon: Package,
       iconColor: "text-orange-500",
+      link: "/stock",
     },
     {
       title: "Transações do Mês",
@@ -204,6 +205,7 @@ const Dashboard = () => {
       description: "Compras e vendas",
       icon: ArrowUpDown,
       iconColor: "text-purple-500",
+      link: "/new-transactions",
     },
     {
       title: "Total de Compras",
@@ -211,6 +213,7 @@ const Dashboard = () => {
       description: "Valor total investido",
       icon: ShoppingCart,
       iconColor: "text-blue-500",
+      link: "/purchases",
     },
     {
       title: "Total de Vendas",
@@ -218,6 +221,7 @@ const Dashboard = () => {
       description: "Valor total vendido",
       icon: TrendingUp,
       iconColor: "text-green-500",
+      link: "/sales",
     },
     {
       title: "Lucro Total",
@@ -225,6 +229,7 @@ const Dashboard = () => {
       description: "Lucro acumulado",
       icon: DollarSign,
       iconColor: "text-primary",
+      link: "/sales",
     },
     {
       title: "Materiais",
@@ -232,6 +237,7 @@ const Dashboard = () => {
       description: "Tipos cadastrados",
       icon: Package,
       iconColor: "text-amber-500",
+      link: "/materials",
     },
   ];
 
@@ -256,16 +262,18 @@ const Dashboard = () => {
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <Icon className={`h-5 w-5 ${stat.iconColor}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
+            <Link key={stat.title} to={stat.link} className="block transition-transform hover:scale-105">
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <Icon className={`h-5 w-5 ${stat.iconColor}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useStockData } from "@/hooks/useStockData";
 import { useMaterials } from "@/hooks/useMaterials";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { transactionSchema, type TransactionFormData } from "@/lib/validations";
@@ -18,10 +19,30 @@ import { VoiceRecognition } from "@/components/VoiceRecognition";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
 import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle } from "lucide-react";
+import { useMemo } from "react";
 
 const NewTransactions = () => {
-  const { transactions, isLoading, createTransaction, isCreating, stockOverview, isLoadingStock } = useTransactions();
+  const { transactions, isLoading, createTransaction, isCreating } = useTransactions();
+  const { stockData } = useStockData();
   const { materials } = useMaterials();
+  
+  const materialsForSelection = useMemo(() => {
+    if (formData.type === 'BUY') {
+      return materials;
+    }
+
+    // Mapeia o estoque para um objeto de fácil consulta
+    const stockMap = stockData.reduce((acc, item) => {
+      acc[item.material_id] = item.quantity;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Filtra os materiais que têm estoque positivo
+    return materials.filter(material => {
+      const stock = stockMap[material.id] || 0;
+      return stock > 0;
+    });
+  }, [materials, stockData, formData.type]);
   const { suppliers } = useSuppliers();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -234,7 +255,7 @@ const NewTransactions = () => {
                       <SelectValue placeholder="Selecione o material" />
                     </SelectTrigger>
                     <SelectContent>
-                      {materials.map((material) => (
+                      {materialsForSelection.map((material) => (
                         <SelectItem key={material.id} value={material.id}>
                           {material.name} ({material.unit_of_measure})
                         </SelectItem>
@@ -404,52 +425,7 @@ const NewTransactions = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="stock">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estoque Atual</CardTitle>
-              <CardDescription>Visão atualizada do estoque após transações</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingStock ? (
-                <p className="text-center py-8 text-muted-foreground">Carregando...</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Material</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Última Atualização</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {stockOverview.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                          Nenhum item em estoque
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      stockOverview.map((item: any) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.materials?.name}</TableCell>
-                          <TableCell>
-                            <Badge variant={Number(item.quantity) > 0 ? "default" : "secondary"}>
-                              {Number(item.quantity).toFixed(3)} {item.materials?.unit_of_measure}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {item.updated_at ? new Date(item.updated_at).toLocaleDateString("pt-BR") : "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
       </Tabs>
     </div>
   );

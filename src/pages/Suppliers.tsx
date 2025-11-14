@@ -37,14 +37,14 @@ const Suppliers = () => {
     }
 
     if (editingSupplier) {
-      updateSupplier({ id: editingSupplier.id, ...result.data } as any);
+      updateSupplier({ id: editingSupplier.id, ...result.data } as any, {
+        onSuccess: handleDialogClose,
+      });
     } else {
-      createSupplier(result.data as any);
+      createSupplier(result.data as any, {
+        onSuccess: handleDialogClose,
+      });
     }
-    
-    setIsDialogOpen(false);
-    setFormData({ name: "", contact: "", address: "" });
-    setEditingSupplier(null);
   };
 
   const handleEdit = (supplier: typeof suppliers[0]) => {

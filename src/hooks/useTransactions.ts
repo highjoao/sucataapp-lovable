@@ -94,32 +94,13 @@ export const useTransactions = () => {
     },
   });
 
-  // Get stock overview
-  const { data: stockOverview = [], isLoading: isLoadingStock } = useQuery({
-    queryKey: ["stock"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
 
-      const { data, error } = await supabase
-        .from("stock")
-        .select(`
-          *,
-          materials (name, unit_of_measure)
-        `)
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-  });
 
   return {
     transactions,
-    stockOverview,
+
     isLoading,
-    isLoadingStock,
+
     error,
     createTransaction: createTransaction.mutate,
     isCreating: createTransaction.isPending,

@@ -372,6 +372,7 @@ export type Database = {
           current_stock: number
           material_id: string
           material_name: string
+          total_stock_value: number
           unit: string
         }[]
       }

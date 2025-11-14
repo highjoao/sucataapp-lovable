@@ -59,12 +59,11 @@ export const QuickCreateSupplier = ({ onCreated }: QuickCreateSupplierProps) => 
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="icon"
         onClick={() => setIsOpen(true)}
-        className="w-full"
+        className="shrink-0"
       >
-        <Plus className="mr-2 h-4 w-4" />
-        Criar Fornecedor
+        <Plus className="h-4 w-4" />
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleClose}>

@@ -7,7 +7,6 @@ import {
   ShoppingCart, 
   TrendingUp, 
   Package, 
-  DollarSign,
   LogOut,
   ArrowLeftRight,
   Boxes,
@@ -37,7 +36,6 @@ const AppSidebar = () => {
     { to: "/sales", icon: TrendingUp, label: "Vendas" },
     { to: "/stock", icon: Package, label: "Estoque" },
     { to: "/transactions", icon: ArrowLeftRight, label: "Transações" },
-    { to: "/quotes", icon: DollarSign, label: "Cotação" },
   ];
 
   return (

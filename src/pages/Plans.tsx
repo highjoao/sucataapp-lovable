@@ -100,9 +100,9 @@ const Plans = () => {
   };
 
   const freePlanFeatures = [
-    "Visualizar cotações de materiais",
     "Dashboard básico",
-    "Consultar preços em tempo real"
+    "Gerenciar até 10 materiais",
+    "Consultar estoque"
   ];
 
   const proPlanFeatures = [

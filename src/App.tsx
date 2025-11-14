@@ -11,7 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import Purchases from "./pages/Purchases";
 import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
-import Quotes from "./pages/Quotes";
 import Transactions from "./pages/Transactions";
 import NewTransactions from "./pages/NewTransactions";
 import Materials from "./pages/Materials";
@@ -47,7 +46,6 @@ const App = () => (
             <Route path="/stock" element={<Stock />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/new-transactions" element={<NewTransactions />} />
-            <Route path="/quotes" element={<Quotes />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

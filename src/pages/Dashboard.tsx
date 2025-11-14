@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { formatCurrency } from "@/lib/formatters";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -256,7 +257,7 @@ const Dashboard = () => {
   const statCards = [
     {
       title: "Valor em Estoque",
-      value: `R$ ${stats.stockValue.toFixed(2)}`,
+      value: formatCurrency(stats.stockValue),
       description: "Valor atual do estoque",
       icon: Package,
       iconColor: "text-orange-500",
@@ -272,7 +273,7 @@ const Dashboard = () => {
     },
     {
       title: "Total de Compras",
-      value: `R$ ${stats.totalPurchases.toFixed(2)}`,
+      value: formatCurrency(stats.totalPurchases),
       description: "Valor total investido",
       icon: ShoppingCart,
       iconColor: "text-blue-500",
@@ -280,7 +281,7 @@ const Dashboard = () => {
     },
     {
       title: "Total de Vendas",
-      value: `R$ ${stats.totalSales.toFixed(2)}`,
+      value: formatCurrency(stats.totalSales),
       description: "Valor total vendido",
       icon: TrendingUp,
       iconColor: "text-green-500",
@@ -288,7 +289,7 @@ const Dashboard = () => {
     },
     {
       title: "Lucro Total",
-      value: `R$ ${stats.totalProfit.toFixed(2)}`,
+      value: formatCurrency(stats.totalProfit),
       description: "Lucro acumulado",
       icon: DollarSign,
       iconColor: "text-primary",

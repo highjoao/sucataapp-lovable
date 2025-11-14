@@ -25,6 +25,19 @@ const NewTransactions = () => {
   const { transactions, isLoading, createTransaction, isCreating } = useTransactions();
   const { stockData } = useStockData();
   const { materials } = useMaterials();
+  const { suppliers } = useSuppliers();
+  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<TransactionFormData>({
+    type: "BUY",
+    material_id: "",
+    supplier_id: "",
+    quantity: 0,
+    price_per_unit: 0,
+  });
+  const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormData, string>>>({});
+  const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
+  const [confidenceScore, setConfidenceScore] = useState<number>(0);
   
   const materialsForSelection = useMemo(() => {
     if (formData.type === 'BUY') {
@@ -43,19 +56,6 @@ const NewTransactions = () => {
       return stock > 0;
     });
   }, [materials, stockData, formData.type]);
-  const { suppliers } = useSuppliers();
-  
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<TransactionFormData>({
-    type: "BUY",
-    material_id: "",
-    supplier_id: "",
-    quantity: 0,
-    price_per_unit: 0,
-  });
-  const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormData, string>>>({});
-  const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
-  const [confidenceScore, setConfidenceScore] = useState<number>(0);
 
   const handleVoiceTranscript = (transcript: string) => {
     // Extrai entidades do texto usando PLN

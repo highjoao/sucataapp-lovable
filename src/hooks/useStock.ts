@@ -9,6 +9,7 @@ export interface StockItem {
   unit: string;
   current_stock: number;
   avg_purchase_price: number;
+  total_stock_value: number;
 }
 
 export const useStock = () => {
@@ -67,7 +68,7 @@ export const useStock = () => {
     // Filtro de valor mínimo
     if (minValue && !isNaN(parseFloat(minValue))) {
       filtered = filtered.filter(
-        (item) => item.current_stock * item.avg_purchase_price >= parseFloat(minValue)
+        (item) => item.total_stock_value >= parseFloat(minValue)
       );
     }
 
@@ -79,9 +80,7 @@ export const useStock = () => {
         case "quantity":
           return b.current_stock - a.current_stock;
         case "value":
-          return (
-            b.current_stock * b.avg_purchase_price - a.current_stock * a.avg_purchase_price
-          );
+          return b.total_stock_value - a.total_stock_value;
         default:
           return 0;
       }

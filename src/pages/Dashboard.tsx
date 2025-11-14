@@ -82,50 +82,35 @@ const Dashboard = () => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
-      // Get transactions this month
+      // Get transactions this month (compras + vendas)
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       
-      const { count: monthTransactions } = await supabase
-        .from("transactions")
+      const { count: monthPurchases } = await supabase
+        .from("purchases")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .gte("created_at", firstDayOfMonth.toISOString())
-        .lte("created_at", lastDayOfMonth.toISOString());
+        .gte("purchase_date", firstDayOfMonth.toISOString())
+        .lte("purchase_date", lastDayOfMonth.toISOString());
 
-      // Get stock value (sum of current stock * last purchase price)
-      const { data: stockData } = await supabase
-        .from("stock")
-        .select(`
-          quantity,
-          materials (
-            id,
-            name
-          )
-        `)
+      const { count: monthSales } = await supabase
+        .from("sales")
+        .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .gt("quantity", 0);
+        .gte("sale_date", firstDayOfMonth.toISOString())
+        .lte("sale_date", lastDayOfMonth.toISOString());
+
+      const monthTransactions = (monthPurchases || 0) + (monthSales || 0);
+
+      // Get stock value usando a função RPC otimizada
+      const { data: stockData, error: stockError } = await supabase.rpc("get_user_stock");
 
       let stockValue = 0;
-      if (stockData) {
-        for (const item of stockData) {
-          if (item.materials && Number(item.quantity) > 0) {
-            // Buscar última compra deste material
-            const { data: lastPurchase } = await supabase
-              .from("purchases")
-              .select("unit_price")
-              .eq("material_id", (item.materials as any).id)
-              .eq("user_id", user.id)
-              .order("purchase_date", { ascending: false })
-              .limit(1)
-              .single();
-            
-            if (lastPurchase) {
-              stockValue += Number(item.quantity) * Number(lastPurchase.unit_price);
-            }
-          }
-        }
+      if (!stockError && stockData) {
+        stockValue = stockData.reduce((sum: number, item: any) => 
+          sum + Number(item.total_stock_value || 0), 0
+        );
       }
 
       setStats({
@@ -133,7 +118,7 @@ const Dashboard = () => {
         totalSales,
         totalProfit,
         materialsCount: materialsCount || 0,
-        monthTransactions: monthTransactions || 0,
+        monthTransactions,
         stockValue,
       });
 

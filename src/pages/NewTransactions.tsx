@@ -92,6 +92,12 @@ const NewTransactions = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // CORREÇÃO CRÍTICA: Previne submissão dupla enquanto a mutação está pendente
+    if (isCreating) {
+      return;
+    }
+    
     setErrors({});
 
     const result = transactionSchema.safeParse(formData);

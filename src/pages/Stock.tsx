@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Package } from "lucide-react";
+import { Plus, Package, Search, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface StockItem {
   material_id: string;
@@ -19,13 +21,21 @@ interface StockItem {
 
 const Stock = () => {
   const [stock, setStock] = useState<StockItem[]>([]);
+  const [filteredStock, setFilteredStock] = useState<StockItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Estados para filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyInStock, setShowOnlyInStock] = useState(false);
+  const [sortBy, setSortBy] = useState<"name" | "quantity" | "value">("name");
+  const [minQuantity, setMinQuantity] = useState<string>("");
+  const [minValue, setMinValue] = useState<string>("");
+
   const [formData, setFormData] = useState({
     name: "",
-    unit: "kg",
+    unit_of_measure: "kg",
   });
 
   const fetchStock = async () => {
@@ -52,6 +62,51 @@ const Stock = () => {
     fetchStock();
   }, []);
 
+  // Aplicar filtros sempre que os dados ou filtros mudarem
+  useEffect(() => {
+    let filtered = [...stock];
+
+    // Filtro de busca por nome
+    if (searchTerm) {
+      filtered = filtered.filter(item =>
+        item.material_name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filtro para mostrar apenas itens em estoque
+    if (showOnlyInStock) {
+      filtered = filtered.filter(item => item.current_stock > 0);
+    }
+
+    // Filtro de quantidade mínima
+    if (minQuantity && !isNaN(parseFloat(minQuantity))) {
+      filtered = filtered.filter(item => item.current_stock >= parseFloat(minQuantity));
+    }
+
+    // Filtro de valor mínimo
+    if (minValue && !isNaN(parseFloat(minValue))) {
+      filtered = filtered.filter(item => 
+        (item.current_stock * item.avg_purchase_price) >= parseFloat(minValue)
+      );
+    }
+
+    // Ordenação
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.material_name.localeCompare(b.material_name);
+        case "quantity":
+          return b.current_stock - a.current_stock;
+        case "value":
+          return (b.current_stock * b.avg_purchase_price) - (a.current_stock * a.avg_purchase_price);
+        default:
+          return 0;
+      }
+    });
+
+    setFilteredStock(filtered);
+  }, [stock, searchTerm, showOnlyInStock, sortBy, minQuantity, minValue]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -62,7 +117,7 @@ const Stock = () => {
     const { error } = await supabase.from("materials").insert({
       user_id: user.id,
       name: formData.name,
-      unit: formData.unit,
+      unit_of_measure: formData.unit_of_measure,
     });
 
     if (error) {
@@ -77,11 +132,19 @@ const Stock = () => {
         description: "Novo material adicionado ao sistema.",
       });
       setIsOpen(false);
-      setFormData({ name: "", unit: "kg" });
+      setFormData({ name: "", unit_of_measure: "kg" });
       fetchStock();
     }
 
     setIsLoading(false);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setShowOnlyInStock(false);
+    setSortBy("name");
+    setMinQuantity("");
+    setMinValue("");
   };
 
   return (
@@ -115,8 +178,8 @@ const Stock = () => {
               <div className="space-y-2">
                 <Label>Unidade de Medida</Label>
                 <Input
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  value={formData.unit_of_measure}
+                  onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
                   placeholder="Ex: kg, ton, un..."
                   required
                 />
@@ -129,8 +192,96 @@ const Stock = () => {
         </Dialog>
       </div>
 
+      {/* Seção de Filtros */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtros
+          </CardTitle>
+          <CardDescription>Filtre e organize seu estoque</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Busca por nome */}
+            <div className="space-y-2">
+              <Label>Buscar Material</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Nome do material..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+
+            {/* Ordenação */}
+            <div className="space-y-2">
+              <Label>Ordenar por</Label>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Nome</SelectItem>
+                  <SelectItem value="quantity">Quantidade</SelectItem>
+                  <SelectItem value="value">Valor Total</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quantidade mínima */}
+            <div className="space-y-2">
+              <Label>Quantidade Mínima</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Ex: 10"
+                value={minQuantity}
+                onChange={(e) => setMinQuantity(e.target.value)}
+              />
+            </div>
+
+            {/* Valor mínimo */}
+            <div className="space-y-2">
+              <Label>Valor Mínimo (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Ex: 100.00"
+                value={minValue}
+                onChange={(e) => setMinValue(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="inStock"
+                checked={showOnlyInStock}
+                onCheckedChange={(checked) => setShowOnlyInStock(checked as boolean)}
+              />
+              <Label htmlFor="inStock" className="cursor-pointer">
+                Mostrar apenas itens em estoque
+              </Label>
+            </div>
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Limpar Filtros
+            </Button>
+          </div>
+
+          <div className="text-sm text-muted-foreground">
+            Mostrando {filteredStock.length} de {stock.length} materiais
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lista de Materiais */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {stock.map((item) => (
+        {filteredStock.map((item) => (
           <Card key={item.material_id}>
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -171,6 +322,21 @@ const Stock = () => {
           </Card>
         ))}
       </div>
+
+      {filteredStock.length === 0 && stock.length > 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-10">
+            <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-semibold">Nenhum material encontrado</h3>
+            <p className="mb-4 text-center text-sm text-muted-foreground">
+              Tente ajustar os filtros para ver mais resultados
+            </p>
+            <Button variant="outline" onClick={clearFilters}>
+              Limpar Filtros
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {stock.length === 0 && (
         <Card>

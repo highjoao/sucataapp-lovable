@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,102 +11,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-
-interface StockItem {
-  material_id: string;
-  material_name: string;
-  unit: string;
-  current_stock: number;
-  avg_purchase_price: number;
-}
+import { useStock } from "@/hooks/useStock";
 
 const Stock = () => {
-  const [stock, setStock] = useState<StockItem[]>([]);
-  const [filteredStock, setFilteredStock] = useState<StockItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Estados para filtros
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showOnlyInStock, setShowOnlyInStock] = useState(false);
-  const [sortBy, setSortBy] = useState<"name" | "quantity" | "value">("name");
-  const [minQuantity, setMinQuantity] = useState<string>("");
-  const [minValue, setMinValue] = useState<string>("");
+  // Usar o hook customizado para gerenciar o estado do estoque
+  const {
+    stock,
+    filteredStock,
+    searchTerm,
+    setSearchTerm,
+    showOnlyInStock,
+    setShowOnlyInStock,
+    sortBy,
+    setSortBy,
+    minQuantity,
+    setMinQuantity,
+    minValue,
+    setMinValue,
+    clearFilters,
+  } = useStock();
 
   const [formData, setFormData] = useState({
     name: "",
     unit_of_measure: "kg",
   });
-
-  const fetchStock = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase.rpc("get_user_stock");
-
-    if (error) {
-      toast({
-        title: "Erro ao carregar estoque",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (data) {
-      setStock(data as StockItem[]);
-    }
-  };
-
-  useEffect(() => {
-    fetchStock();
-  }, []);
-
-  // Aplicar filtros sempre que os dados ou filtros mudarem
-  useEffect(() => {
-    let filtered = [...stock];
-
-    // Filtro de busca por nome
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.material_name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtro para mostrar apenas itens em estoque
-    if (showOnlyInStock) {
-      filtered = filtered.filter(item => item.current_stock > 0);
-    }
-
-    // Filtro de quantidade mínima
-    if (minQuantity && !isNaN(parseFloat(minQuantity))) {
-      filtered = filtered.filter(item => item.current_stock >= parseFloat(minQuantity));
-    }
-
-    // Filtro de valor mínimo
-    if (minValue && !isNaN(parseFloat(minValue))) {
-      filtered = filtered.filter(item => 
-        (item.current_stock * item.avg_purchase_price) >= parseFloat(minValue)
-      );
-    }
-
-    // Ordenação
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return a.material_name.localeCompare(b.material_name);
-        case "quantity":
-          return b.current_stock - a.current_stock;
-        case "value":
-          return (b.current_stock * b.avg_purchase_price) - (a.current_stock * a.avg_purchase_price);
-        default:
-          return 0;
-      }
-    });
-
-    setFilteredStock(filtered);
-  }, [stock, searchTerm, showOnlyInStock, sortBy, minQuantity, minValue]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,18 +67,12 @@ const Stock = () => {
       });
       setIsOpen(false);
       setFormData({ name: "", unit_of_measure: "kg" });
-      fetchStock();
+      
+      // Invalidar a query para refetch dos dados atualizados
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
     }
 
     setIsLoading(false);
-  };
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setShowOnlyInStock(false);
-    setSortBy("name");
-    setMinQuantity("");
-    setMinValue("");
   };
 
   return (

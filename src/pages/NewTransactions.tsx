@@ -20,6 +20,7 @@ import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
 import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle } from "lucide-react";
 import { useMemo } from "react";
+import { formatCurrency } from "@/lib/formatters";
 
 const NewTransactions = () => {
   const { transactions, isLoading, createTransaction, isCreating } = useTransactions();
@@ -163,9 +164,9 @@ const NewTransactions = () => {
               <TableCell>
                 {transaction.quantity} {transaction.materials?.unit_of_measure}
               </TableCell>
-              <TableCell>R$ {Number(transaction.price_per_unit).toFixed(2)}</TableCell>
+              <TableCell>{formatCurrency(Number(transaction.price_per_unit))}</TableCell>
               <TableCell className="font-bold">
-                R$ {(Number(transaction.quantity) * Number(transaction.price_per_unit)).toFixed(2)}
+                {formatCurrency(Number(transaction.quantity) * Number(transaction.price_per_unit))}
               </TableCell>
             </TableRow>
           ))
@@ -320,7 +321,7 @@ const NewTransactions = () => {
               {formData.quantity > 0 && formData.price_per_unit > 0 && (
                 <div className="rounded-lg bg-muted p-3">
                   <p className="text-sm font-medium">
-                    Total: R$ {(formData.quantity * formData.price_per_unit).toFixed(2)}
+                    Total: {formatCurrency(formData.quantity * formData.price_per_unit)}
                   </p>
                 </div>
               )}

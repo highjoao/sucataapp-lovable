@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatCurrency } from "@/lib/formatters";
 
 interface StockItem {
   material_id: string;
@@ -308,13 +309,13 @@ const Stock = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Preço Médio de Compra</p>
                   <p className="text-lg font-semibold text-primary">
-                    R$ {item.avg_purchase_price.toFixed(2)}/{item.unit}
+                    {formatCurrency(item.avg_purchase_price)}/{item.unit}
                   </p>
                 </div>
                 <div className="border-t pt-2">
                   <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
                   <p className="text-lg font-bold">
-                    R$ {(item.current_stock * item.avg_purchase_price).toFixed(2)}
+                    {formatCurrency(item.current_stock * item.avg_purchase_price)}
                   </p>
                 </div>
               </div>

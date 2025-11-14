@@ -52,9 +52,18 @@ export const useSuppliers = () => {
       });
     },
     onError: (error: any) => {
+      // Log detalhado do erro no console para diagnóstico
+      console.error("Erro ao criar fornecedor:", JSON.stringify(error, null, 2));
+      console.error("Detalhes completos do erro:", error);
+
+      // Construir mensagem de erro detalhada
+      const errorMessage = error.message || "Ocorreu um erro ao cadastrar o fornecedor.";
+      const errorDetails = error.details || error.hint || "";
+      const errorCode = error.code ? `Código: ${error.code}` : "";
+
       toast({
         title: "Erro ao criar fornecedor",
-        description: error.message || "Ocorreu um erro ao cadastrar o fornecedor.",
+        description: `${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}${errorCode ? ` (${errorCode})` : ""}`,
         variant: "destructive",
       });
     },
@@ -81,9 +90,18 @@ export const useSuppliers = () => {
       });
     },
     onError: (error: any) => {
+      // Log detalhado do erro no console para diagnóstico
+      console.error("Erro ao atualizar fornecedor:", JSON.stringify(error, null, 2));
+      console.error("Detalhes completos do erro:", error);
+
+      // Construir mensagem de erro detalhada
+      const errorMessage = error.message || "Ocorreu um erro ao atualizar o fornecedor.";
+      const errorDetails = error.details || error.hint || "";
+      const errorCode = error.code ? `Código: ${error.code}` : "";
+
       toast({
         title: "Erro ao atualizar fornecedor",
-        description: error.message || "Ocorreu um erro ao atualizar o fornecedor.",
+        description: `${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}${errorCode ? ` (${errorCode})` : ""}`,
         variant: "destructive",
       });
     },
@@ -107,9 +125,18 @@ export const useSuppliers = () => {
       });
     },
     onError: (error: any) => {
+      // Log detalhado do erro no console para diagnóstico
+      console.error("Erro ao excluir fornecedor:", JSON.stringify(error, null, 2));
+      console.error("Detalhes completos do erro:", error);
+
+      // Construir mensagem de erro detalhada
+      const errorMessage = error.message || "Ocorreu um erro ao excluir o fornecedor.";
+      const errorDetails = error.details || error.hint || "";
+      const errorCode = error.code ? `Código: ${error.code}` : "";
+
       toast({
         title: "Erro ao excluir fornecedor",
-        description: error.message || "Ocorreu um erro ao excluir o fornecedor.",
+        description: `${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}${errorCode ? ` (${errorCode})` : ""}`,
         variant: "destructive",
       });
     },

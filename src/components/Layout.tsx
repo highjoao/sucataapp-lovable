@@ -73,11 +73,15 @@ const LayoutContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { setOpen } = useSidebar();
+  const { setOpen, setOpenMobile, isMobile } = useSidebar();
 
   useEffect(() => {
-    setOpen(false);
-  }, [location.pathname, setOpen]);
+    if (isMobile) {
+      setOpenMobile(false);
+    } else {
+      setOpen(false);
+    }
+  }, [location.pathname, setOpen, setOpenMobile, isMobile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

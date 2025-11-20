@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 import { 
   Recycle, 
   ShoppingCart, 
@@ -22,7 +23,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger
+  SidebarTrigger,
+  useSidebar
 } from "@/components/ui/sidebar";
 
 const AppSidebar = () => {
@@ -67,9 +69,15 @@ const AppSidebar = () => {
   );
 };
 
-const Layout = () => {
+const LayoutContent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { setOpen } = useSidebar();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname, setOpen]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -81,38 +89,44 @@ const Layout = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-50 bg-primary shadow-md">
-            <div className="flex h-16 items-center gap-4 px-6">
-              <SidebarTrigger className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/10" />
-              <div className="flex items-center gap-3 flex-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground/10">
-                  <Recycle className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <span className="text-xl font-bold text-primary-foreground">SucataApp</span>
-                </div>
+    <div className="flex min-h-screen w-full">
+      <AppSidebar />
+      <div className="flex flex-1 flex-col">
+        <header className="sticky top-0 z-50 bg-primary shadow-md">
+          <div className="flex h-16 items-center gap-4 px-6">
+            <SidebarTrigger className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/10" />
+            <div className="flex items-center gap-3 flex-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground/10">
+                <Recycle className="h-6 w-6 text-primary-foreground" />
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleLogout}
-                className="text-primary-foreground hover:bg-primary-foreground/10"
-              >
-                <LogOut className="h-5 w-5" />
-              </Button>
+              <div>
+                <span className="text-xl font-bold text-primary-foreground">SucataApp</span>
+              </div>
             </div>
-          </header>
-          <main className="flex-1 overflow-auto bg-background">
-            <div className="container mx-auto p-6">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </header>
+        <main className="flex-1 overflow-auto bg-background">
+          <div className="container mx-auto p-6">
+            <Outlet />
+          </div>
+        </main>
       </div>
+    </div>
+  );
+};
+
+const Layout = () => {
+  return (
+    <SidebarProvider>
+      <LayoutContent />
     </SidebarProvider>
   );
 };

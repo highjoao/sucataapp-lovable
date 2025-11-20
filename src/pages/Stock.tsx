@@ -18,6 +18,7 @@ interface StockItem {
   unit: string;
   current_stock: number;
   avg_purchase_price: number;
+  total_stock_value: number;
 }
 
 const Stock = () => {
@@ -87,7 +88,7 @@ const Stock = () => {
     // Filtro de valor mínimo
     if (minValue && !isNaN(parseFloat(minValue))) {
       filtered = filtered.filter(item => 
-        (item.current_stock * item.avg_purchase_price) >= parseFloat(minValue)
+        item.total_stock_value >= parseFloat(minValue)
       );
     }
 
@@ -99,7 +100,7 @@ const Stock = () => {
         case "quantity":
           return b.current_stock - a.current_stock;
         case "value":
-          return (b.current_stock * b.avg_purchase_price) - (a.current_stock * a.avg_purchase_price);
+          return b.total_stock_value - a.total_stock_value;
         default:
           return 0;
       }
@@ -315,7 +316,7 @@ const Stock = () => {
                 <div className="border-t pt-2">
                   <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
                   <p className="text-lg font-bold">
-                    {formatCurrency(item.current_stock * item.avg_purchase_price)}
+                    {formatCurrency(item.total_stock_value)}
                   </p>
                 </div>
               </div>

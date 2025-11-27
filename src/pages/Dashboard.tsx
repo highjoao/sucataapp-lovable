@@ -116,7 +116,7 @@ const Dashboard = () => {
         .gte("created_at", start.toISOString())
         .lte("created_at", end.toISOString());
 
-      // Get stock value (Current snapshot, not filtered)
+      // Get stock value based on actual purchase prices (FIFO)
       const { data: stockData } = await supabase
         .from("stock")
         .select(`
@@ -133,18 +133,29 @@ const Dashboard = () => {
       if (stockData) {
         for (const item of stockData) {
           if (item.materials && Number(item.quantity) > 0) {
-            // Buscar última compra deste material
-            const { data: lastPurchase } = await supabase
+            const materialId = (item.materials as any).id;
+            let remainingQuantity = Number(item.quantity);
+            
+            // Buscar todas as compras deste material ordenadas por data (FIFO)
+            const { data: purchases } = await supabase
               .from("purchases")
-              .select("unit_price")
-              .eq("material_id", (item.materials as any).id)
+              .select("quantity, unit_price, total_price")
+              .eq("material_id", materialId)
               .eq("user_id", user.id)
-              .order("purchase_date", { ascending: false })
-              .limit(1)
-              .single();
+              .order("purchase_date", { ascending: true });
 
-            if (lastPurchase) {
-              stockValue += Number(item.quantity) * Number(lastPurchase.unit_price);
+            if (purchases && purchases.length > 0) {
+              // Calcular valor do estoque usando FIFO
+              for (const purchase of purchases) {
+                if (remainingQuantity <= 0) break;
+                
+                const purchaseQty = Number(purchase.quantity);
+                const qtyToUse = Math.min(remainingQuantity, purchaseQty);
+                const unitPrice = Number(purchase.unit_price);
+                
+                stockValue += qtyToUse * unitPrice;
+                remainingQuantity -= qtyToUse;
+              }
             }
           }
         }

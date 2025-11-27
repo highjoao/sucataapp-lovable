@@ -31,13 +31,13 @@ const AppSidebar = () => {
   const location = useLocation();
 
   const navItems = [
-    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/purchases", icon: ShoppingCart, label: "Compras" },
-    { to: "/sales", icon: TrendingUp, label: "Vendas" },
-    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações" },
-    { to: "/stock", icon: Package, label: "Estoque" },
-    { to: "/suppliers", icon: Truck, label: "Fornecedores" },
-    { to: "/materials", icon: Boxes, label: "Materiais" },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "text-blue-500" },
+    { to: "/purchases", icon: ShoppingCart, label: "Compras", color: "text-orange-500" },
+    { to: "/sales", icon: TrendingUp, label: "Vendas", color: "text-green-500" },
+    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações", color: "text-purple-500" },
+    { to: "/stock", icon: Package, label: "Estoque", color: "text-amber-500" },
+    { to: "/suppliers", icon: Truck, label: "Fornecedores", color: "text-cyan-500" },
+    { to: "/materials", icon: Boxes, label: "Materiais", color: "text-pink-500" },
   ];
 
   return (
@@ -53,8 +53,8 @@ const AppSidebar = () => {
                 return (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.to}>
-                        <Icon className="h-5 w-5" />
+                      <Link to={item.to} className="flex items-center gap-3">
+                        <Icon className={`h-5 w-5 ${item.color}`} />
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>

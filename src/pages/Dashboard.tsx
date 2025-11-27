@@ -316,25 +316,25 @@ const Dashboard = () => {
       link: "/transactions",
     },
     {
-      title: `Compras (${getPeriodLabel()})`,
+      title: getPeriodLabel() ? `Compras (${getPeriodLabel()})` : "Compras",
       value: formatCurrency(stats.totalPurchases),
-      description: "Valor investido no período",
+      description: getPeriodLabel() ? "Valor investido no período" : "Valor investido",
       icon: ShoppingCart,
       iconColor: "text-blue-500",
       link: "/transactions?type=BUY",
     },
     {
-      title: `Vendas (${getPeriodLabel()})`,
+      title: getPeriodLabel() ? `Vendas (${getPeriodLabel()})` : "Vendas",
       value: formatCurrency(stats.totalSales),
-      description: "Valor vendido no período",
+      description: getPeriodLabel() ? "Valor vendido no período" : "Valor vendido",
       icon: TrendingUp,
       iconColor: "text-green-500",
       link: "/transactions?type=SELL",
     },
     {
-      title: `Lucro (${getPeriodLabel()})`,
+      title: getPeriodLabel() ? `Lucro (${getPeriodLabel()})` : "Lucro",
       value: formatCurrency(stats.totalProfit),
-      description: "Lucro no período",
+      description: getPeriodLabel() ? "Lucro no período" : "Lucro total",
       icon: DollarSign,
       iconColor: "text-primary",
       link: "/sales",
@@ -376,12 +376,12 @@ const Dashboard = () => {
             <Link key={stat.title} to={stat.link} className="block transition-transform hover:scale-105">
               <Card className="cursor-pointer hover:border-primary/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium transition-all duration-300">{stat.title}</CardTitle>
                   <Icon className={`h-5 w-5 ${stat.iconColor}`} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                  <div className="text-2xl font-bold animate-fade-in" key={stat.value}>{stat.value}</div>
+                  <p className="text-xs text-muted-foreground transition-all duration-300">{stat.description}</p>
                 </CardContent>
               </Card>
             </Link>

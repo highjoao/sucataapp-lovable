@@ -17,7 +17,7 @@ const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { refreshSubscription } = useSubscription();
-  const [dateRange, setDateRange] = useState<DateRange>("month");
+  const [dateRange, setDateRange] = useState<DateRange>(null);
   const [stats, setStats] = useState({
     totalPurchases: 0,
     totalSales: 0,
@@ -64,40 +64,55 @@ const Dashboard = () => {
 
       // Calculate date range
       const now = new Date();
-      let start: Date, end: Date;
+      let start: Date | null = null;
+      let end: Date | null = null;
 
-      switch (dateRange) {
-        case "today":
-          start = startOfDay(now);
-          end = endOfDay(now);
-          break;
-        case "week":
-          start = startOfWeek(now, { weekStartsOn: 0 }); // Sunday
-          end = endOfWeek(now, { weekStartsOn: 0 });
-          break;
-        case "month":
-          start = startOfMonth(now);
-          end = endOfMonth(now);
-          break;
+      if (dateRange) {
+        switch (dateRange) {
+          case "today":
+            start = startOfDay(now);
+            end = endOfDay(now);
+            break;
+          case "week":
+            start = startOfWeek(now, { weekStartsOn: 0 }); // Sunday
+            end = endOfWeek(now, { weekStartsOn: 0 });
+            break;
+          case "month":
+            start = startOfMonth(now);
+            end = endOfMonth(now);
+            break;
+        }
       }
 
       // Get purchases total
-      const { data: purchases } = await supabase
+      let purchasesQuery = supabase
         .from("purchases")
         .select("total_price")
-        .eq("user_id", user.id)
-        .gte("purchase_date", start.toISOString())
-        .lte("purchase_date", end.toISOString());
+        .eq("user_id", user.id);
+      
+      if (start && end) {
+        purchasesQuery = purchasesQuery
+          .gte("purchase_date", start.toISOString())
+          .lte("purchase_date", end.toISOString());
+      }
+      
+      const { data: purchases } = await purchasesQuery;
 
       const totalPurchases = purchases?.reduce((sum, p) => sum + Number(p.total_price), 0) || 0;
 
       // Get sales total and profit
-      const { data: sales } = await supabase
+      let salesQuery = supabase
         .from("sales")
         .select("total_price, profit")
-        .eq("user_id", user.id)
-        .gte("sale_date", start.toISOString())
-        .lte("sale_date", end.toISOString());
+        .eq("user_id", user.id);
+      
+      if (start && end) {
+        salesQuery = salesQuery
+          .gte("sale_date", start.toISOString())
+          .lte("sale_date", end.toISOString());
+      }
+      
+      const { data: sales } = await salesQuery;
 
       const totalSales = sales?.reduce((sum, s) => sum + Number(s.total_price), 0) || 0;
       const totalProfit = sales?.reduce((sum, s) => sum + Number(s.profit), 0) || 0;
@@ -109,12 +124,18 @@ const Dashboard = () => {
         .eq("user_id", user.id);
 
       // Get transactions in period
-      const { count: periodTransactions } = await supabase
+      let transactionsQuery = supabase
         .from("transactions")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .gte("created_at", start.toISOString())
-        .lte("created_at", end.toISOString());
+        .eq("user_id", user.id);
+      
+      if (start && end) {
+        transactionsQuery = transactionsQuery
+          .gte("created_at", start.toISOString())
+          .lte("created_at", end.toISOString());
+      }
+      
+      const { count: periodTransactions } = await transactionsQuery;
 
       // Get stock value based on actual purchase prices (FIFO)
       const { data: stockData } = await supabase
@@ -215,7 +236,7 @@ const Dashboard = () => {
       setMonthlyData(Array.from(monthlyMap.values()));
 
       // Get material performance (Filtered by date range)
-      const { data: materialStats } = await supabase
+      let materialStatsQuery = supabase
         .from("sales")
         .select(`
           material_id,
@@ -223,9 +244,15 @@ const Dashboard = () => {
           profit,
           materials (name)
         `)
-        .eq("user_id", user.id)
-        .gte("sale_date", start.toISOString())
-        .lte("sale_date", end.toISOString());
+        .eq("user_id", user.id);
+      
+      if (start && end) {
+        materialStatsQuery = materialStatsQuery
+          .gte("sale_date", start.toISOString())
+          .lte("sale_date", end.toISOString());
+      }
+      
+      const { data: materialStats } = await materialStatsQuery;
 
       const materialMap = new Map();
       materialStats?.forEach((s: any) => {
@@ -241,7 +268,7 @@ const Dashboard = () => {
       setMaterialData(Array.from(materialMap.values()).slice(0, 5));
 
       // Get purchase distribution by material (Filtered)
-      const { data: purchasesByMaterial } = await supabase
+      let purchasesByMaterialQuery = supabase
         .from("purchases")
         .select(`
           material_id,
@@ -249,9 +276,15 @@ const Dashboard = () => {
           total_price,
           materials (name)
         `)
-        .eq("user_id", user.id)
-        .gte("purchase_date", start.toISOString())
-        .lte("purchase_date", end.toISOString());
+        .eq("user_id", user.id);
+      
+      if (start && end) {
+        purchasesByMaterialQuery = purchasesByMaterialQuery
+          .gte("purchase_date", start.toISOString())
+          .lte("purchase_date", end.toISOString());
+      }
+      
+      const { data: purchasesByMaterial } = await purchasesByMaterialQuery;
 
       const purchaseMap = new Map();
       purchasesByMaterial?.forEach((p: any) => {
@@ -269,7 +302,7 @@ const Dashboard = () => {
       setPurchasePieData(topPurchases);
 
       // Get sales distribution by material (Filtered)
-      const { data: salesByMaterial } = await supabase
+      let salesByMaterialQuery = supabase
         .from("sales")
         .select(`
           material_id,
@@ -277,9 +310,15 @@ const Dashboard = () => {
           total_price,
           materials (name)
         `)
-        .eq("user_id", user.id)
-        .gte("sale_date", start.toISOString())
-        .lte("sale_date", end.toISOString());
+        .eq("user_id", user.id);
+      
+      if (start && end) {
+        salesByMaterialQuery = salesByMaterialQuery
+          .gte("sale_date", start.toISOString())
+          .lte("sale_date", end.toISOString());
+      }
+      
+      const { data: salesByMaterial } = await salesByMaterialQuery;
 
       const salesMap = new Map();
       salesByMaterial?.forEach((s: any) => {

@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useSuppliers } from "@/hooks/useSuppliers";
 
 interface Material {
   id: string;
@@ -23,18 +24,24 @@ interface Purchase {
   total_price: number;
   purchase_date: string;
   notes: string | null;
+  supplier_id: string | null;
   materials: { name: string; unit_of_measure: string };
+  suppliers?: { name: string } | null;
 }
 
 const Purchases = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [filteredPurchases, setFilteredPurchases] = useState<Purchase[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const { toast } = useToast();
+  const { suppliers } = useSuppliers();
 
   const [formData, setFormData] = useState({
     materialId: "",
+    supplierId: "",
     quantity: "",
     unitPrice: "",
     notes: "",
@@ -61,7 +68,8 @@ const Purchases = () => {
       .from("purchases")
       .select(`
         *,
-        materials (name, unit_of_measure)
+        materials (name, unit_of_measure),
+        suppliers (name)
       `)
       .eq("user_id", user.id)
       .order("purchase_date", { ascending: false });
@@ -73,6 +81,17 @@ const Purchases = () => {
     fetchMaterials();
     fetchPurchases();
   }, []);
+
+  // Apply supplier filter
+  useEffect(() => {
+    if (selectedSupplier === "all") {
+      setFilteredPurchases(purchases);
+    } else if (selectedSupplier === "none") {
+      setFilteredPurchases(purchases.filter(p => !p.supplier_id));
+    } else {
+      setFilteredPurchases(purchases.filter(p => p.supplier_id === selectedSupplier));
+    }
+  }, [purchases, selectedSupplier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +139,7 @@ const Purchases = () => {
     const { error } = await supabase.from("purchases").insert({
       user_id: user.id,
       material_id: formData.materialId,
+      supplier_id: formData.supplierId || null,
       quantity,
       unit_price: unitPrice,
       total_price: totalPrice,
@@ -138,7 +158,7 @@ const Purchases = () => {
         description: "A compra foi adicionada ao estoque automaticamente.",
       });
       setIsOpen(false);
-      setFormData({ materialId: "", quantity: "", unitPrice: "", notes: "" });
+      setFormData({ materialId: "", supplierId: "", quantity: "", unitPrice: "", notes: "" });
       fetchPurchases();
     }
 
@@ -183,6 +203,25 @@ const Purchases = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>Fornecedor (Opcional)</Label>
+                <Select
+                  value={formData.supplierId}
+                  onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o fornecedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Quantidade</Label>
                 <Input
                   type="number"
@@ -223,8 +262,37 @@ const Purchases = () => {
         </Dialog>
       </div>
 
+      {/* Filter by Supplier */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtrar por Fornecedor
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os fornecedores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os fornecedores</SelectItem>
+              <SelectItem value="none">Sem fornecedor</SelectItem>
+              {suppliers.map((supplier) => (
+                <SelectItem key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground mt-2">
+            Mostrando {filteredPurchases.length} de {purchases.length} compras
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4">
-        {purchases.map((purchase) => (
+        {filteredPurchases.map((purchase) => (
           <Card key={purchase.id}>
             <CardHeader>
               <CardTitle>{purchase.materials.name}</CardTitle>
@@ -248,6 +316,12 @@ const Purchases = () => {
                   <span className="text-muted-foreground">Total:</span>
                   <span className="font-bold text-primary">R$ {purchase.total_price.toFixed(2)}</span>
                 </div>
+                {purchase.suppliers && (
+                  <div className="mt-2 border-t pt-2">
+                    <span className="text-muted-foreground">Fornecedor:</span>
+                    <p className="mt-1 font-medium">{purchase.suppliers.name}</p>
+                  </div>
+                )}
                 {purchase.notes && (
                   <div className="mt-2 border-t pt-2">
                     <span className="text-muted-foreground">Observações:</span>

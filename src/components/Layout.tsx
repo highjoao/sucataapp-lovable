@@ -32,12 +32,12 @@ const AppSidebar = () => {
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/materials", icon: Boxes, label: "Materiais" },
-    { to: "/suppliers", icon: Truck, label: "Fornecedores" },
     { to: "/purchases", icon: ShoppingCart, label: "Compras" },
     { to: "/sales", icon: TrendingUp, label: "Vendas" },
+    { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações" },
     { to: "/stock", icon: Package, label: "Estoque" },
-    { to: "/transactions", icon: ArrowLeftRight, label: "Transações" },
+    { to: "/suppliers", icon: Truck, label: "Fornecedores" },
+    { to: "/materials", icon: Boxes, label: "Materiais" },
   ];
 
   return (

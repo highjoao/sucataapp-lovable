@@ -80,6 +80,7 @@ export const useTransactions = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock"] });
+      queryClient.invalidateQueries({ queryKey: ["stockData"] });
       toast({
         title: "Transação registrada!",
         description: `${data.type === "BUY" ? "Compra" : "Venda"} registrada e estoque atualizado automaticamente.`,
@@ -94,15 +95,182 @@ export const useTransactions = () => {
     },
   });
 
+  // Delete transaction (reverts stock changes)
+  const deleteTransaction = useMutation({
+    mutationFn: async (transactionId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
 
+      // Get transaction details before deleting
+      const { data: transaction, error: fetchError } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("id", transactionId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (fetchError || !transaction) {
+        throw new Error("Transação não encontrada");
+      }
+
+      // Revert stock changes
+      const stockChange = transaction.type === "BUY" 
+        ? -transaction.quantity 
+        : transaction.quantity;
+
+      const { data: currentStock } = await supabase
+        .from("stock")
+        .select("quantity")
+        .eq("material_id", transaction.material_id)
+        .single();
+
+      if (currentStock) {
+        const newQuantity = Number(currentStock.quantity) + stockChange;
+        
+        if (newQuantity < 0) {
+          throw new Error("Não é possível excluir: resultaria em estoque negativo");
+        }
+
+        await supabase
+          .from("stock")
+          .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+          .eq("material_id", transaction.material_id);
+      }
+
+      // Delete transaction
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transactionId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      return transaction;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
+      queryClient.invalidateQueries({ queryKey: ["stockData"] });
+      toast({
+        title: "Transação excluída!",
+        description: `${data.type === "BUY" ? "Compra" : "Venda"} removida e estoque atualizado.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao excluir transação",
+        description: error.message || "Ocorreu um erro ao excluir a transação.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update transaction
+  const updateTransaction = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<TransactionInsert> }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Get old transaction to revert stock
+      const { data: oldTransaction, error: fetchError } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (fetchError || !oldTransaction) {
+        throw new Error("Transação não encontrada");
+      }
+
+      // Revert old stock changes
+      const oldStockChange = oldTransaction.type === "BUY" 
+        ? -oldTransaction.quantity 
+        : oldTransaction.quantity;
+
+      const { data: currentStock } = await supabase
+        .from("stock")
+        .select("quantity")
+        .eq("material_id", oldTransaction.material_id)
+        .single();
+
+      if (currentStock) {
+        await supabase
+          .from("stock")
+          .update({ 
+            quantity: Number(currentStock.quantity) + oldStockChange,
+            updated_at: new Date().toISOString() 
+          })
+          .eq("material_id", oldTransaction.material_id);
+      }
+
+      // Update transaction
+      const { data: updated, error } = await supabase
+        .from("transactions")
+        .update(data)
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Apply new stock changes
+      const newStockChange = (data.type || oldTransaction.type) === "BUY" 
+        ? (data.quantity || oldTransaction.quantity)
+        : -(data.quantity || oldTransaction.quantity);
+
+      const { data: newCurrentStock } = await supabase
+        .from("stock")
+        .select("quantity")
+        .eq("material_id", data.material_id || oldTransaction.material_id)
+        .single();
+
+      if (newCurrentStock) {
+        const finalQuantity = Number(newCurrentStock.quantity) + newStockChange;
+        
+        if (finalQuantity < 0) {
+          throw new Error("Atualização resultaria em estoque negativo");
+        }
+
+        await supabase
+          .from("stock")
+          .update({ 
+            quantity: finalQuantity,
+            updated_at: new Date().toISOString() 
+          })
+          .eq("material_id", data.material_id || oldTransaction.material_id);
+      }
+
+      return updated;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
+      queryClient.invalidateQueries({ queryKey: ["stockData"] });
+      toast({
+        title: "Transação atualizada!",
+        description: "Estoque atualizado automaticamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar transação",
+        description: error.message || "Ocorreu um erro ao atualizar a transação.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return {
     transactions,
-
     isLoading,
-
     error,
     createTransaction: createTransaction.mutate,
     isCreating: createTransaction.isPending,
+    deleteTransaction: deleteTransaction.mutate,
+    isDeleting: deleteTransaction.isPending,
+    updateTransaction: updateTransaction.mutate,
+    isUpdating: updateTransaction.isPending,
   };
 };

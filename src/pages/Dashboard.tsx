@@ -8,6 +8,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { ShoppingCart, TrendingUp, Package, DollarSign, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { formatCurrency } from "@/lib/formatters";
+import { DateRangeFilter, DateRange } from "@/components/DateRangeFilter";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -15,12 +17,13 @@ const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { refreshSubscription } = useSubscription();
+  const [dateRange, setDateRange] = useState<DateRange>("month");
   const [stats, setStats] = useState({
     totalPurchases: 0,
     totalSales: 0,
     totalProfit: 0,
     materialsCount: 0,
-    monthTransactions: 0,
+    periodTransactions: 0,
     stockValue: 0,
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
@@ -31,22 +34,22 @@ const Dashboard = () => {
 
   useEffect(() => {
     const success = searchParams.get('success');
-    
+
     if (success === 'true') {
       setShowSuccessAlert(true);
       toast({
         title: "Assinatura Ativada!",
         description: "Bem-vindo ao Plano Pro. Todos os recursos foram desbloqueados!",
       });
-      
+
       // Atualizar status da assinatura
       setTimeout(() => {
         refreshSubscription();
       }, 2000);
-      
+
       // Limpar parâmetro da URL
       setSearchParams({});
-      
+
       // Esconder alerta após 10 segundos
       setTimeout(() => {
         setShowSuccessAlert(false);
@@ -59,42 +62,61 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Calculate date range
+      const now = new Date();
+      let start: Date, end: Date;
+
+      switch (dateRange) {
+        case "today":
+          start = startOfDay(now);
+          end = endOfDay(now);
+          break;
+        case "week":
+          start = startOfWeek(now, { weekStartsOn: 0 }); // Sunday
+          end = endOfWeek(now, { weekStartsOn: 0 });
+          break;
+        case "month":
+          start = startOfMonth(now);
+          end = endOfMonth(now);
+          break;
+      }
+
       // Get purchases total
       const { data: purchases } = await supabase
         .from("purchases")
         .select("total_price")
-        .eq("user_id", user.id);
-      
+        .eq("user_id", user.id)
+        .gte("purchase_date", start.toISOString())
+        .lte("purchase_date", end.toISOString());
+
       const totalPurchases = purchases?.reduce((sum, p) => sum + Number(p.total_price), 0) || 0;
 
       // Get sales total and profit
       const { data: sales } = await supabase
         .from("sales")
         .select("total_price, profit")
-        .eq("user_id", user.id);
-      
+        .eq("user_id", user.id)
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
+
       const totalSales = sales?.reduce((sum, s) => sum + Number(s.total_price), 0) || 0;
       const totalProfit = sales?.reduce((sum, s) => sum + Number(s.profit), 0) || 0;
 
-      // Get materials count
+      // Get materials count (Total, not filtered)
       const { count: materialsCount } = await supabase
         .from("materials")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
-      // Get transactions this month
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      
-      const { count: monthTransactions } = await supabase
+      // Get transactions in period
+      const { count: periodTransactions } = await supabase
         .from("transactions")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .gte("created_at", firstDayOfMonth.toISOString())
-        .lte("created_at", lastDayOfMonth.toISOString());
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
 
-      // Get stock value (sum of current stock * last purchase price)
+      // Get stock value (Current snapshot, not filtered)
       const { data: stockData } = await supabase
         .from("stock")
         .select(`
@@ -120,7 +142,7 @@ const Dashboard = () => {
               .order("purchase_date", { ascending: false })
               .limit(1)
               .single();
-            
+
             if (lastPurchase) {
               stockValue += Number(item.quantity) * Number(lastPurchase.unit_price);
             }
@@ -133,11 +155,18 @@ const Dashboard = () => {
         totalSales,
         totalProfit,
         materialsCount: materialsCount || 0,
-        monthTransactions: monthTransactions || 0,
+        periodTransactions: periodTransactions || 0,
         stockValue,
       });
 
-      // Get monthly data for charts
+      // Get monthly data for charts (Always show last 6 months or current year context, maybe keep as is or filter?)
+      // For charts, usually we want to see trends, so filtering by "Today" might break the line chart if it expects months.
+      // Let's keep charts showing monthly data for context, or maybe adjust granularity?
+      // The request was "Filtros no dashboard - Dia atual / semanal / mensal". Usually applies to the KPI cards.
+      // I will keep the charts showing general trends but maybe limit the range if needed. 
+      // For now, I'll leave the charts showing all history or maybe last 12 months to be safe, 
+      // but the KPI cards will strictly follow the filter.
+
       const { data: monthlySales } = await supabase
         .from("sales")
         .select("sale_date, total_price, profit")
@@ -152,7 +181,7 @@ const Dashboard = () => {
 
       // Aggregate by month
       const monthlyMap = new Map();
-      
+
       monthlyPurchases?.forEach(p => {
         const month = new Date(p.purchase_date).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
         if (!monthlyMap.has(month)) {
@@ -174,7 +203,7 @@ const Dashboard = () => {
 
       setMonthlyData(Array.from(monthlyMap.values()));
 
-      // Get material performance
+      // Get material performance (Filtered by date range)
       const { data: materialStats } = await supabase
         .from("sales")
         .select(`
@@ -183,7 +212,9 @@ const Dashboard = () => {
           profit,
           materials (name)
         `)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
 
       const materialMap = new Map();
       materialStats?.forEach((s: any) => {
@@ -198,7 +229,7 @@ const Dashboard = () => {
 
       setMaterialData(Array.from(materialMap.values()).slice(0, 5));
 
-      // Get purchase distribution by material
+      // Get purchase distribution by material (Filtered)
       const { data: purchasesByMaterial } = await supabase
         .from("purchases")
         .select(`
@@ -207,7 +238,9 @@ const Dashboard = () => {
           total_price,
           materials (name)
         `)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .gte("purchase_date", start.toISOString())
+        .lte("purchase_date", end.toISOString());
 
       const purchaseMap = new Map();
       purchasesByMaterial?.forEach((p: any) => {
@@ -224,7 +257,7 @@ const Dashboard = () => {
         .slice(0, 8);
       setPurchasePieData(topPurchases);
 
-      // Get sales distribution by material
+      // Get sales distribution by material (Filtered)
       const { data: salesByMaterial } = await supabase
         .from("sales")
         .select(`
@@ -233,7 +266,9 @@ const Dashboard = () => {
           total_price,
           materials (name)
         `)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
 
       const salesMap = new Map();
       salesByMaterial?.forEach((s: any) => {
@@ -252,7 +287,16 @@ const Dashboard = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [dateRange]);
+
+  const getPeriodLabel = () => {
+    switch (dateRange) {
+      case "today": return "Hoje";
+      case "week": return "Esta Semana";
+      case "month": return "Este Mês";
+      default: return "";
+    }
+  };
 
   const statCards = [
     {
@@ -264,33 +308,33 @@ const Dashboard = () => {
       link: "/stock",
     },
     {
-      title: "Transações do Mês",
-      value: stats.monthTransactions.toString(),
+      title: `Transações (${getPeriodLabel()})`,
+      value: stats.periodTransactions.toString(),
       description: "Compras e vendas",
       icon: ArrowUpDown,
       iconColor: "text-purple-500",
       link: "/transactions",
     },
     {
-      title: "Total de Compras",
+      title: `Compras (${getPeriodLabel()})`,
       value: formatCurrency(stats.totalPurchases),
-      description: "Valor total investido",
+      description: "Valor investido no período",
       icon: ShoppingCart,
       iconColor: "text-blue-500",
       link: "/transactions?type=BUY",
     },
     {
-      title: "Total de Vendas",
+      title: `Vendas (${getPeriodLabel()})`,
       value: formatCurrency(stats.totalSales),
-      description: "Valor total vendido",
+      description: "Valor vendido no período",
       icon: TrendingUp,
       iconColor: "text-green-500",
       link: "/transactions?type=SELL",
     },
     {
-      title: "Lucro Total",
+      title: `Lucro (${getPeriodLabel()})`,
       value: formatCurrency(stats.totalProfit),
-      description: "Lucro acumulado",
+      description: "Lucro no período",
       icon: DollarSign,
       iconColor: "text-primary",
       link: "/sales",
@@ -307,9 +351,12 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do seu negócio</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral do seu negócio</p>
+        </div>
+        <DateRangeFilter value={dateRange} onChange={setDateRange} />
       </div>
 
       {showSuccessAlert && (
@@ -346,70 +393,82 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Distribuição de Compras</CardTitle>
-            <CardDescription>Top 8 materiais mais comprados</CardDescription>
+            <CardDescription>Top 8 materiais mais comprados ({getPeriodLabel()})</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={purchasePieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {purchasePieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px"
-                  }}
-                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {purchasePieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={purchasePieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {purchasePieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px"
+                    }}
+                    formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                Sem dados para o período selecionado
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Distribuição de Vendas</CardTitle>
-            <CardDescription>Top 8 materiais mais vendidos</CardDescription>
+            <CardDescription>Top 8 materiais mais vendidos ({getPeriodLabel()})</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={salesPieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {salesPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px"
-                  }}
-                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {salesPieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={salesPieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {salesPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px"
+                    }}
+                    formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                Sem dados para o período selecionado
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -417,7 +476,7 @@ const Dashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>Movimentação Mensal</CardTitle>
-          <CardDescription>Comparativo de compras, vendas e lucro</CardDescription>
+          <CardDescription>Histórico geral (não afetado pelo filtro)</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -425,9 +484,9 @@ const Dashboard = () => {
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "hsl(var(--card))", 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "8px"
                 }}
@@ -445,27 +504,33 @@ const Dashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>Desempenho por Material</CardTitle>
-          <CardDescription>Top 5 materiais mais lucrativos</CardDescription>
+          <CardDescription>Top 5 materiais mais lucrativos ({getPeriodLabel()})</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={materialData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="material" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "hsl(var(--card))", 
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px"
-                }}
-                formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-              />
-              <Legend />
-              <Bar dataKey="vendas" fill="#10b981" name="Vendas" />
-              <Bar dataKey="lucro" fill="hsl(var(--primary))" name="Lucro" />
-            </BarChart>
-          </ResponsiveContainer>
+          {materialData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={materialData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="material" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px"
+                  }}
+                  formatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                />
+                <Legend />
+                <Bar dataKey="vendas" fill="#10b981" name="Vendas" />
+                <Bar dataKey="lucro" fill="hsl(var(--primary))" name="Lucro" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+              Sem dados para o período selecionado
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

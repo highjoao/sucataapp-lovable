@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { supplierSchema, type SupplierFormData } from "@/lib/validations";
-import { Plus, Pencil, Trash2, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, History } from "lucide-react";
 
 const Suppliers = () => {
+  const navigate = useNavigate();
   const { suppliers, isLoading, createSupplier, updateSupplier, deleteSupplier, isCreating, isUpdating, isDeleting } = useSuppliers();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<{ id: string; name: string; contact: string | null; address: string | null } | null>(null);
@@ -175,6 +177,14 @@ const Suppliers = () => {
                     <TableCell>{supplier.address || "-"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Ver Histórico"
+                          onClick={() => navigate(`/transactions?supplierId=${supplier.id}`)}
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

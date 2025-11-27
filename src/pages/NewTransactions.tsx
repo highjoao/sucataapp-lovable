@@ -27,7 +27,7 @@ const NewTransactions = () => {
   const { stockData } = useStockData();
   const { materials } = useMaterials();
   const { suppliers } = useSuppliers();
-  
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<TransactionFormData>({
     type: "BUY",
@@ -39,7 +39,7 @@ const NewTransactions = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormData, string>>>({});
   const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
   const [confidenceScore, setConfidenceScore] = useState<number>(0);
-  
+
   const materialsForSelection = useMemo(() => {
     if (formData.type === 'BUY') {
       return materials;
@@ -63,7 +63,7 @@ const NewTransactions = () => {
     const entities = extractEntitiesFromText(transcript, materials);
     const score = calculateConfidenceScore(entities);
     const feedback = getExtractionFeedback(entities);
-    
+
     setConfidenceScore(score);
     setNlpFeedback(feedback);
 
@@ -71,11 +71,11 @@ const NewTransactions = () => {
     if (entities.type) {
       setFormData((prev) => ({ ...prev, type: entities.type! }));
     }
-    
+
     if (entities.quantity && entities.quantity > 0) {
       setFormData((prev) => ({ ...prev, quantity: entities.quantity! }));
     }
-    
+
     if (entities.materialName) {
       const material = materials.find(
         (m) => m.name.toLowerCase() === entities.materialName?.toLowerCase()
@@ -84,7 +84,7 @@ const NewTransactions = () => {
         setFormData((prev) => ({ ...prev, material_id: material.id }));
       }
     }
-    
+
     if (entities.pricePerUnit && entities.pricePerUnit > 0) {
       setFormData((prev) => ({ ...prev, price_per_unit: entities.pricePerUnit! }));
     }
@@ -92,12 +92,12 @@ const NewTransactions = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // CORREÇÃO CRÍTICA: Previne submissão dupla enquanto a mutação está pendente
     if (isCreating) {
       return;
     }
-    
+
     setErrors({});
 
     const result = transactionSchema.safeParse(formData);
@@ -204,10 +204,10 @@ const NewTransactions = () => {
                 Registre uma compra ou venda. O estoque será atualizado automaticamente.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               {/* Reconhecimento de Voz */}
-              <VoiceRecognition 
+              <VoiceRecognition
                 onTranscript={handleVoiceTranscript}
                 isDisabled={isCreating}
               />
@@ -235,56 +235,55 @@ const NewTransactions = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Tipo de Transação*</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value: "BUY" | "SELL") => setFormData({ ...formData, type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BUY">Compra</SelectItem>
-                    <SelectItem value="SELL">Venda</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="material">Material*</Label>
-                <div className="flex gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="type">Tipo de Transação*</Label>
                   <Select
-                    value={formData.material_id}
-                    onValueChange={(value) => setFormData({ ...formData, material_id: value })}
+                    value={formData.type}
+                    onValueChange={(value: "BUY" | "SELL") => setFormData({ ...formData, type: value })}
                   >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione o material" />
+                    <SelectTrigger>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {materialsForSelection.map((material) => (
-                        <SelectItem key={material.id} value={material.id}>
-                          {material.name} ({material.unit_of_measure})
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="BUY">Compra</SelectItem>
+                      <SelectItem value="SELL">Venda</SelectItem>
                     </SelectContent>
                   </Select>
-                  <QuickCreateMaterial 
-                    onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })} 
-                  />
+                  {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
                 </div>
-                {errors.material_id && <p className="text-sm text-destructive">{errors.material_id}</p>}
-              </div>
-              {formData.type === "BUY" && (
                 <div className="space-y-2">
-                  <Label htmlFor="supplier">Fornecedor</Label>
+                  <Label htmlFor="material">Material*</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.material_id}
+                      onValueChange={(value) => setFormData({ ...formData, material_id: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione o material" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {materialsForSelection.map((material) => (
+                          <SelectItem key={material.id} value={material.id}>
+                            {material.name} ({material.unit_of_measure})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <QuickCreateMaterial
+                      onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })}
+                    />
+                  </div>
+                  {errors.material_id && <p className="text-sm text-destructive">{errors.material_id}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supplier">Fornecedor (Opcional)</Label>
                   <div className="flex gap-2">
                     <Select
                       value={formData.supplier_id}
                       onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Selecione o fornecedor (opcional)" />
+                        <SelectValue placeholder="Selecione o fornecedor" />
                       </SelectTrigger>
                       <SelectContent>
                         {suppliers.map((supplier) => (
@@ -294,51 +293,50 @@ const NewTransactions = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <QuickCreateSupplier 
-                      onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })} 
+                    <QuickCreateSupplier
+                      onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })}
                     />
                   </div>
                 </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantidade*</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  step="0.001"
-                  placeholder="Ex: 100.5"
-                  value={formData.quantity || ""}
-                  onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-                />
-                {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Preço Unitário (R$)*</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  placeholder="Ex: 25.50"
-                  value={formData.price_per_unit || ""}
-                  onChange={(e) => setFormData({ ...formData, price_per_unit: parseFloat(e.target.value) || 0 })}
-                />
-                {errors.price_per_unit && <p className="text-sm text-destructive">{errors.price_per_unit}</p>}
-              </div>
-              {formData.quantity > 0 && formData.price_per_unit > 0 && (
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-sm font-medium">
-                    Total: {formatCurrency(formData.quantity * formData.price_per_unit)}
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantidade*</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    step="0.001"
+                    placeholder="Ex: 100.5"
+                    value={formData.quantity || ""}
+                    onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                  {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
                 </div>
-              )}
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={handleDialogClose}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? "Salvando..." : "Salvar Transação"}
-                </Button>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Preço Unitário (R$)*</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 25.50"
+                    value={formData.price_per_unit || ""}
+                    onChange={(e) => setFormData({ ...formData, price_per_unit: parseFloat(e.target.value) || 0 })}
+                  />
+                  {errors.price_per_unit && <p className="text-sm text-destructive">{errors.price_per_unit}</p>}
+                </div>
+                {formData.quantity > 0 && formData.price_per_unit > 0 && (
+                  <div className="rounded-lg bg-muted p-3">
+                    <p className="text-sm font-medium">
+                      Total: {formatCurrency(formData.quantity * formData.price_per_unit)}
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isCreating}>
+                    {isCreating ? "Salvando..." : "Salvar Transação"}
+                  </Button>
+                </div>
               </form>
             </div>
           </DialogContent>

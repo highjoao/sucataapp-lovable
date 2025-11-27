@@ -12,7 +12,8 @@ import {
   ArrowLeftRight,
   Boxes,
   Truck,
-  LayoutDashboard
+  LayoutDashboard,
+  DollarSign
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const AppSidebar = () => {
     { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações", color: "text-purple-500" },
     { to: "/stock", icon: Package, label: "Estoque", color: "text-amber-500" },
     { to: "/suppliers", icon: Truck, label: "Fornecedores", color: "text-cyan-500" },
+    { to: "/cashflow", icon: DollarSign, label: "Fluxo de Caixa", color: "text-emerald-500" },
     { to: "/materials", icon: Boxes, label: "Materiais", color: "text-pink-500" },
   ];
 

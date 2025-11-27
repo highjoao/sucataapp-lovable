@@ -308,7 +308,7 @@ const Dashboard = () => {
       link: "/stock",
     },
     {
-      title: `Transações (${getPeriodLabel()})`,
+      title: getPeriodLabel() ? `Transações (${getPeriodLabel()})` : "Transações",
       value: stats.periodTransactions.toString(),
       description: "Compras e vendas",
       icon: ArrowUpDown,

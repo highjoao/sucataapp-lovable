@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,17 +19,22 @@ import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedbac
 import { VoiceRecognition } from "@/components/VoiceRecognition";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
-import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle } from "lucide-react";
+import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle, Pencil, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { formatCurrency } from "@/lib/formatters";
+import type { Tables } from "@/integrations/supabase/types";
 
 const NewTransactions = () => {
-  const { transactions, isLoading, createTransaction, isCreating } = useTransactions();
+  const { transactions, isLoading, createTransaction, isCreating, deleteTransaction, isDeleting, updateTransaction, isUpdating } = useTransactions();
   const { stockData } = useStockData();
   const { materials } = useMaterials();
   const { suppliers } = useSuppliers();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState<TransactionFormData>({
     type: "BUY",
     material_id: "",
@@ -93,8 +99,7 @@ const NewTransactions = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // CORREÇÃO CRÍTICA: Previne submissão dupla enquanto a mutação está pendente
-    if (isCreating) {
+    if (isCreating || isUpdating) {
       return;
     }
 
@@ -112,21 +117,22 @@ const NewTransactions = () => {
       return;
     }
 
-    createTransaction(result.data as any);
-    setIsDialogOpen(false);
-    setFormData({
-      type: "BUY",
-      material_id: "",
-      supplier_id: "",
-      quantity: 0,
-      price_per_unit: 0,
-    });
-    setNlpFeedback([]);
-    setConfidenceScore(0);
+    if (isEditMode && editingId) {
+      updateTransaction({ 
+        id: editingId, 
+        data: result.data as any 
+      });
+    } else {
+      createTransaction(result.data as any);
+    }
+    
+    handleDialogClose();
   };
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
+    setIsEditMode(false);
+    setEditingId(null);
     setFormData({
       type: "BUY",
       material_id: "",
@@ -135,6 +141,34 @@ const NewTransactions = () => {
       price_per_unit: 0,
     });
     setErrors({});
+    setNlpFeedback([]);
+    setConfidenceScore(0);
+  };
+
+  const handleEdit = (transaction: Tables<"transactions">) => {
+    setIsEditMode(true);
+    setEditingId(transaction.id);
+    setFormData({
+      type: transaction.type as "BUY" | "SELL",
+      material_id: transaction.material_id,
+      supplier_id: transaction.supplier_id || "",
+      quantity: Number(transaction.quantity),
+      price_per_unit: Number(transaction.price_per_unit),
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteClick = (transactionId: string) => {
+    setTransactionToDelete(transactionId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (transactionToDelete) {
+      deleteTransaction(transactionToDelete);
+      setDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+    }
   };
 
   const purchases = transactions.filter(t => t.type === "BUY");
@@ -150,12 +184,13 @@ const NewTransactions = () => {
           <TableHead>Quantidade</TableHead>
           <TableHead>Preço Unit.</TableHead>
           <TableHead>Total</TableHead>
+          <TableHead className="text-right">Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {data.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
               Nenhuma transação registrada
             </TableCell>
           </TableRow>
@@ -173,6 +208,26 @@ const NewTransactions = () => {
               <TableCell>{formatCurrency(Number(transaction.price_per_unit))}</TableCell>
               <TableCell className="font-bold">
                 {formatCurrency(Number(transaction.quantity) * Number(transaction.price_per_unit))}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(transaction)}
+                    disabled={isDeleting || isUpdating}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteClick(transaction.id)}
+                    disabled={isDeleting || isUpdating}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))
@@ -199,9 +254,11 @@ const NewTransactions = () => {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nova Transação</DialogTitle>
+              <DialogTitle>{isEditMode ? "Editar Transação" : "Nova Transação"}</DialogTitle>
               <DialogDescription>
-                Registre uma compra ou venda. O estoque será atualizado automaticamente.
+                {isEditMode 
+                  ? "Edite a transação. O estoque será recalculado automaticamente." 
+                  : "Registre uma compra ou venda. O estoque será atualizado automaticamente."}
               </DialogDescription>
             </DialogHeader>
 
@@ -333,8 +390,10 @@ const NewTransactions = () => {
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={isCreating}>
-                    {isCreating ? "Salvando..." : "Salvar Transação"}
+                  <Button type="submit" disabled={isCreating || isUpdating}>
+                    {isEditMode 
+                      ? (isUpdating ? "Atualizando..." : "Atualizar Transação")
+                      : (isCreating ? "Salvando..." : "Salvar Transação")}
                   </Button>
                 </div>
               </form>
@@ -432,6 +491,27 @@ const NewTransactions = () => {
 
 
       </Tabs>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta transação? O estoque será automaticamente ajustado.
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

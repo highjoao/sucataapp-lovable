@@ -18,6 +18,11 @@ interface Material {
   unit_of_measure: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+}
+
 interface Sale {
   id: string;
   quantity: number;
@@ -27,11 +32,14 @@ interface Sale {
   profit: number;
   sale_date: string;
   notes: string | null;
+  supplier_id: string | null;
   materials: { name: string; unit_of_measure: string };
+  suppliers?: { name: string } | null;
 }
 
 const Sales = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +50,7 @@ const Sales = () => {
 
   const [formData, setFormData] = useState({
     materialId: "",
+    supplierId: "none",
     quantity: "",
     unitPrice: "",
     notes: "",
@@ -60,6 +69,19 @@ const Sales = () => {
     if (data) setMaterials(data);
   };
 
+  const fetchSuppliers = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("suppliers")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .order("name");
+
+    if (data) setSuppliers(data);
+  };
+
   const fetchSales = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -68,7 +90,8 @@ const Sales = () => {
       .from("sales")
       .select(`
         *,
-        materials (name, unit_of_measure)
+        materials (name, unit_of_measure),
+        suppliers (name)
       `)
       .eq("user_id", user.id)
       .order("sale_date", { ascending: false });
@@ -78,6 +101,7 @@ const Sales = () => {
 
   useEffect(() => {
     fetchMaterials();
+    fetchSuppliers();
     fetchSales();
   }, []);
 
@@ -146,6 +170,7 @@ const Sales = () => {
     const { error } = await supabase.from("sales").insert({
       user_id: user.id,
       material_id: formData.materialId,
+      supplier_id: formData.supplierId && formData.supplierId !== "none" ? formData.supplierId : null,
       quantity,
       unit_price: unitPrice,
       total_price: totalPrice,
@@ -166,7 +191,7 @@ const Sales = () => {
         description: `Lucro de R$ ${profit.toFixed(2)}`,
       });
       setIsOpen(false);
-      setFormData({ materialId: "", quantity: "", unitPrice: "", notes: "" });
+      setFormData({ materialId: "", supplierId: "none", quantity: "", unitPrice: "", notes: "" });
       fetchSales();
     }
 
@@ -214,6 +239,25 @@ const Sales = () => {
                     {materials.map((material) => (
                       <SelectItem key={material.id} value={material.id}>
                         {material.name} ({material.unit_of_measure})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Fornecedor (opcional)</Label>
+                <Select
+                  value={formData.supplierId}
+                  onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o fornecedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -311,6 +355,12 @@ const Sales = () => {
                   <span className="text-muted-foreground">Custo:</span>
                   <span className="font-medium">R$ {sale.cost_price.toFixed(2)}</span>
                 </div>
+                {sale.suppliers && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Fornecedor:</span>
+                    <span className="font-medium">{sale.suppliers.name}</span>
+                  </div>
+                )}
                 {sale.notes && (
                   <div className="mt-2 border-t pt-2">
                     <span className="text-muted-foreground">Observações:</span>

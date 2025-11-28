@@ -6,11 +6,10 @@ export const materialSchema = z.object({
     .min(1, "Nome do material é obrigatório")
     .max(100, "Nome deve ter no máximo 100 caracteres")
     .trim(),
-  unit_of_measure: z.string()
-    .min(1, "Unidade de medida é obrigatória")
-    .max(10, "Unidade deve ter no máximo 10 caracteres")
-    .trim()
-    .toUpperCase(),
+  unit_of_measure: z.enum(["kg", "g", "un", "ton", "peca"], {
+    required_error: "Unidade de medida é obrigatória",
+    invalid_type_error: "Unidade de medida inválida",
+  }),
 });
 
 export type MaterialFormData = z.infer<typeof materialSchema>;

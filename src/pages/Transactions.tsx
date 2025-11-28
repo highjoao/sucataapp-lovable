@@ -308,7 +308,15 @@ const Transactions = () => {
       <TableBody>
         {data.map((transaction) => (
           <TableRow key={transaction.id}>
-            <TableCell>{new Date(transaction.date).toLocaleDateString("pt-BR")}</TableCell>
+            <TableCell>
+              {new Date(transaction.date).toLocaleString("pt-BR", {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </TableCell>
             {showType && (
               <TableCell>
                 <Badge variant={transaction.type === "purchase" ? "secondary" : "default"}>

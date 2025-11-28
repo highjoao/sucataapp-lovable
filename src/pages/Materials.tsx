@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMaterials } from "@/hooks/useMaterials";
 import { materialSchema } from "@/lib/validations";
 import { Plus, Pencil, Trash2, Package } from "lucide-react";
@@ -17,7 +18,7 @@ const Materials = () => {
   const [editingMaterial, setEditingMaterial] = useState<{ id: string; name: string; unit_of_measure: string } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    unit_of_measure: "",
+    unit_of_measure: "kg", // Default to kg
   });
   const [errors, setErrors] = useState<{ name?: string; unit_of_measure?: string }>({});
 
@@ -26,7 +27,7 @@ const Materials = () => {
     setErrors({});
 
     const result = materialSchema.safeParse(formData);
-    
+
     if (!result.success) {
       const fieldErrors: { name?: string; unit_of_measure?: string } = {};
       result.error.errors.forEach((error) => {
@@ -44,7 +45,7 @@ const Materials = () => {
         {
           onSuccess: () => {
             setIsDialogOpen(false);
-            setFormData({ name: "", unit_of_measure: "" });
+            setFormData({ name: "", unit_of_measure: "kg" });
             setEditingMaterial(null);
           },
         }
@@ -55,7 +56,7 @@ const Materials = () => {
         {
           onSuccess: () => {
             setIsDialogOpen(false);
-            setFormData({ name: "", unit_of_measure: "" });
+            setFormData({ name: "", unit_of_measure: "kg" });
             setEditingMaterial(null);
           },
         }
@@ -81,7 +82,7 @@ const Materials = () => {
   const handleDialogClose = (open: boolean) => {
     setIsDialogOpen(open);
     if (!open) {
-      setFormData({ name: "", unit_of_measure: "" });
+      setFormData({ name: "", unit_of_measure: "kg" });
       setEditingMaterial(null);
       setErrors({});
     }
@@ -121,12 +122,21 @@ const Materials = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unidade de Medida*</Label>
-                <Input
-                  id="unit"
-                  placeholder="Ex: KG, TON, UN"
+                <Select
                   value={formData.unit_of_measure}
-                  onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
-                />
+                  onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kg">KG</SelectItem>
+                    <SelectItem value="g">G</SelectItem>
+                    <SelectItem value="un">UN</SelectItem>
+                    <SelectItem value="ton">TON</SelectItem>
+                    <SelectItem value="peca">Peça</SelectItem>
+                  </SelectContent>
+                </Select>
                 {errors.unit_of_measure && <p className="text-sm text-destructive">{errors.unit_of_measure}</p>}
               </div>
               <div className="flex gap-2 justify-end">
@@ -171,7 +181,13 @@ const Materials = () => {
                   <TableRow key={material.id}>
                     <TableCell className="font-medium">{material.name}</TableCell>
                     <TableCell>{material.unit_of_measure}</TableCell>
-                    <TableCell>{new Date(material.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell>{new Date(material.created_at).toLocaleString("pt-BR", {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button

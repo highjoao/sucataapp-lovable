@@ -198,11 +198,11 @@ const Sales = () => {
                     <SelectValue placeholder="Selecione o material" />
                   </SelectTrigger>
                   <SelectContent>
-                  {materials.map((material) => (
-                    <SelectItem key={material.id} value={material.id}>
-                      {material.name} ({material.unit_of_measure})
-                    </SelectItem>
-                  ))}
+                    {materials.map((material) => (
+                      <SelectItem key={material.id} value={material.id}>
+                        {material.name} ({material.unit_of_measure})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -255,7 +255,13 @@ const Sales = () => {
                 <div>
                   <CardTitle>{sale.materials.name}</CardTitle>
                   <CardDescription>
-                    {new Date(sale.sale_date).toLocaleDateString("pt-BR")}
+                    {new Date(sale.sale_date).toLocaleString("pt-BR", {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </CardDescription>
                 </div>
                 <Badge variant={sale.profit > 0 ? "default" : "destructive"} className="text-sm">

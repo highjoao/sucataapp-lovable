@@ -41,7 +41,7 @@ const Purchases = () => {
 
   const [formData, setFormData] = useState({
     materialId: "",
-    supplierId: "",
+    supplierId: "none",
     quantity: "",
     unitPrice: "",
     notes: "",
@@ -139,7 +139,7 @@ const Purchases = () => {
     const { error } = await supabase.from("purchases").insert({
       user_id: user.id,
       material_id: formData.materialId,
-      supplier_id: formData.supplierId || null,
+      supplier_id: formData.supplierId && formData.supplierId !== "none" ? formData.supplierId : null,
       quantity,
       unit_price: unitPrice,
       total_price: totalPrice,
@@ -158,7 +158,7 @@ const Purchases = () => {
         description: "A compra foi adicionada ao estoque automaticamente.",
       });
       setIsOpen(false);
-      setFormData({ materialId: "", supplierId: "", quantity: "", unitPrice: "", notes: "" });
+      setFormData({ materialId: "", supplierId: "none", quantity: "", unitPrice: "", notes: "" });
       fetchPurchases();
     }
 
@@ -212,7 +212,7 @@ const Purchases = () => {
                     <SelectValue placeholder="Selecione o fornecedor" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {suppliers.map((supplier) => (
                       <SelectItem key={supplier.id} value={supplier.id}>
                         {supplier.name}

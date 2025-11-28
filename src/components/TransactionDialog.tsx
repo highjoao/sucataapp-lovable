@@ -35,8 +35,12 @@ export const TransactionDialog = ({
 }: TransactionDialogProps) => {
     const { createTransaction, isCreating, updateTransaction, isUpdating } = useTransactions();
     const { stockData } = useStockData();
-    const { materials } = useMaterials();
-    const { suppliers } = useSuppliers();
+    const { materials, refetch: refetchMaterials } = useMaterials();
+    const { suppliers, refetch: refetchSuppliers } = useSuppliers();
+
+    // Quick Create States
+    const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
+    const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
 
     // Helper to get current local datetime string for input
     const getCurrentDateTime = () => {
@@ -254,12 +258,21 @@ export const TransactionDialog = ({
                             <div className="flex gap-2">
                                 <Select
                                     value={formData.material_id}
-                                    onValueChange={(value) => setFormData({ ...formData, material_id: value })}
+                                    onValueChange={(value) => {
+                                        if (value === "new") {
+                                            setIsCreateMaterialOpen(true);
+                                            return;
+                                        }
+                                        setFormData({ ...formData, material_id: value });
+                                    }}
                                 >
                                     <SelectTrigger className="flex-1">
                                         <SelectValue placeholder="Selecione o material" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="new" className="text-primary font-medium">
+                                            + Cadastrar Novo Material
+                                        </SelectItem>
                                         {materialsForSelection.map((material) => (
                                             <SelectItem key={material.id} value={material.id}>
                                                 {material.name} ({material.unit_of_measure})
@@ -267,9 +280,6 @@ export const TransactionDialog = ({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <QuickCreateMaterial
-                                    onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })}
-                                />
                             </div>
                             {errors.material_id && <p className="text-sm text-destructive">{errors.material_id}</p>}
                         </div>
@@ -278,12 +288,21 @@ export const TransactionDialog = ({
                             <div className="flex gap-2">
                                 <Select
                                     value={formData.supplier_id}
-                                    onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                                    onValueChange={(value) => {
+                                        if (value === "new") {
+                                            setIsCreateSupplierOpen(true);
+                                            return;
+                                        }
+                                        setFormData({ ...formData, supplier_id: value });
+                                    }}
                                 >
                                     <SelectTrigger className="flex-1">
                                         <SelectValue placeholder="Selecione o fornecedor" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="new" className="text-primary font-medium">
+                                            + Cadastrar Novo Fornecedor
+                                        </SelectItem>
                                         {suppliers.map((supplier) => (
                                             <SelectItem key={supplier.id} value={supplier.id}>
                                                 {supplier.name}
@@ -291,9 +310,6 @@ export const TransactionDialog = ({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <QuickCreateSupplier
-                                    onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })}
-                                />
                             </div>
                         </div>
 
@@ -349,6 +365,24 @@ export const TransactionDialog = ({
                     </form>
                 </div>
             </DialogContent>
+
+            <QuickCreateMaterial
+                open={isCreateMaterialOpen}
+                onOpenChange={setIsCreateMaterialOpen}
+                onCreated={(materialId) => {
+                    refetchMaterials();
+                    setFormData({ ...formData, material_id: materialId });
+                }}
+            />
+
+            <QuickCreateSupplier
+                open={isCreateSupplierOpen}
+                onOpenChange={setIsCreateSupplierOpen}
+                onCreated={(supplierId) => {
+                    refetchSuppliers();
+                    setFormData({ ...formData, supplier_id: supplierId });
+                }}
+            />
         </Dialog>
     );
 };

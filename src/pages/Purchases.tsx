@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
+import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
 
 interface Material {
   id: string;
@@ -37,7 +39,11 @@ const Purchases = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const { toast } = useToast();
-  const { suppliers } = useSuppliers();
+  const { suppliers, refetch: refetchSuppliers } = useSuppliers();
+
+  // Quick Create States
+  const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
+  const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     materialId: "",
@@ -188,12 +194,21 @@ const Purchases = () => {
                 <Label>Material</Label>
                 <Select
                   value={formData.materialId}
-                  onValueChange={(value) => setFormData({ ...formData, materialId: value })}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      setIsCreateMaterialOpen(true);
+                      return;
+                    }
+                    setFormData({ ...formData, materialId: value });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o material" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="new" className="text-primary font-medium">
+                      + Cadastrar Novo Material
+                    </SelectItem>
                     {materials.map((material) => (
                       <SelectItem key={material.id} value={material.id}>
                         {material.name} ({material.unit_of_measure})
@@ -206,12 +221,21 @@ const Purchases = () => {
                 <Label>Fornecedor (Opcional)</Label>
                 <Select
                   value={formData.supplierId}
-                  onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      setIsCreateSupplierOpen(true);
+                      return;
+                    }
+                    setFormData({ ...formData, supplierId: value });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o fornecedor" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="new" className="text-primary font-medium">
+                      + Cadastrar Novo Fornecedor
+                    </SelectItem>
                     <SelectItem value="none">Nenhum</SelectItem>
                     {suppliers.map((supplier) => (
                       <SelectItem key={supplier.id} value={supplier.id}>
@@ -261,6 +285,24 @@ const Purchases = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <QuickCreateMaterial
+        open={isCreateMaterialOpen}
+        onOpenChange={setIsCreateMaterialOpen}
+        onCreated={(materialId) => {
+          fetchMaterials();
+          setFormData({ ...formData, materialId });
+        }}
+      />
+
+      <QuickCreateSupplier
+        open={isCreateSupplierOpen}
+        onOpenChange={setIsCreateSupplierOpen}
+        onCreated={(supplierId) => {
+          refetchSuppliers();
+          setFormData({ ...formData, supplierId });
+        }}
+      />
 
       {/* Filter by Supplier */}
       <Card>

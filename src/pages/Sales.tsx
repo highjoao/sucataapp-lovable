@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 
 interface Material {
   id: string;
@@ -35,6 +36,9 @@ const Sales = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Quick Create State
+  const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     materialId: "",
@@ -192,12 +196,21 @@ const Sales = () => {
                 <Label>Material</Label>
                 <Select
                   value={formData.materialId}
-                  onValueChange={(value) => setFormData({ ...formData, materialId: value })}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      setIsCreateMaterialOpen(true);
+                      return;
+                    }
+                    setFormData({ ...formData, materialId: value });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o material" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="new" className="text-primary font-medium">
+                      + Cadastrar Novo Material
+                    </SelectItem>
                     {materials.map((material) => (
                       <SelectItem key={material.id} value={material.id}>
                         {material.name} ({material.unit_of_measure})
@@ -246,6 +259,15 @@ const Sales = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <QuickCreateMaterial
+        open={isCreateMaterialOpen}
+        onOpenChange={setIsCreateMaterialOpen}
+        onCreated={(materialId) => {
+          fetchMaterials(); // Refresh list
+          setFormData({ ...formData, materialId }); // Auto-select
+        }}
+      />
 
       <div className="grid gap-4">
         {sales.map((sale) => (

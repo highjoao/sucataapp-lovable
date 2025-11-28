@@ -200,7 +200,6 @@ const Stock = () => {
               </div>
               <div className="space-y-2">
                 <Label>Unidade de Medida</Label>
-                {/* Improvement #4: Standardize Unit of Measure */}
                 <Select
                   value={formData.unit_of_measure}
                   onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
@@ -338,12 +337,14 @@ const Stock = () => {
                     {item.current_stock.toFixed(2)} {item.unit}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Preço Médio de Compra</p>
-                  <p className="text-lg font-semibold text-primary">
-                    {formatCurrency(item.avg_purchase_price)}/{item.unit}
-                  </p>
-                </div>
+                {item.current_stock > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Preço Médio de Compra</p>
+                    <p className="text-lg font-semibold text-primary">
+                      {formatCurrency(item.avg_purchase_price)}/{item.unit}
+                    </p>
+                  </div>
+                )}
                 <div className="border-t pt-2">
                   <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
                   <p className="text-lg font-bold">

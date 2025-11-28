@@ -38,12 +38,20 @@ export const TransactionDialog = ({
     const { materials } = useMaterials();
     const { suppliers } = useSuppliers();
 
+    // Helper to get current local datetime string for input
+    const getCurrentDateTime = () => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        return now.toISOString().slice(0, 16);
+    };
+
     const [formData, setFormData] = useState<TransactionFormData>({
         type: "BUY",
         material_id: "",
         supplier_id: "",
         quantity: 0,
         price_per_unit: 0,
+        transaction_date: getCurrentDateTime(),
     });
     const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormData, string>>>({});
     const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
@@ -58,6 +66,9 @@ export const TransactionDialog = ({
                 supplier_id: initialData?.supplier_id || "",
                 quantity: initialData?.quantity || 0,
                 price_per_unit: initialData?.price_per_unit || 0,
+                transaction_date: initialData?.transaction_date
+                    ? new Date(initialData.transaction_date).toISOString().slice(0, 16)
+                    : getCurrentDateTime(),
             });
             setErrors({});
             setNlpFeedback([]);
@@ -135,7 +146,13 @@ export const TransactionDialog = ({
 
         setErrors({});
 
-        const result = transactionSchema.safeParse(formData);
+        // Ensure transaction_date is a full ISO string for validation/storage
+        const dataToSubmit = {
+            ...formData,
+            transaction_date: new Date(formData.transaction_date || new Date()).toISOString(),
+        };
+
+        const result = transactionSchema.safeParse(dataToSubmit);
         if (!result.success) {
             const fieldErrors: Partial<Record<keyof TransactionFormData, string>> = {};
             result.error.errors.forEach((error) => {
@@ -201,22 +218,37 @@ export const TransactionDialog = ({
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="type">Tipo de Transação*</Label>
-                            <Select
-                                value={formData.type}
-                                onValueChange={(value: "BUY" | "SELL") => setFormData({ ...formData, type: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="BUY">Compra</SelectItem>
-                                    <SelectItem value="SELL">Venda</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="type">Tipo de Transação*</Label>
+                                <Select
+                                    value={formData.type}
+                                    onValueChange={(value: "BUY" | "SELL") => setFormData({ ...formData, type: value })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="BUY">Compra</SelectItem>
+                                        <SelectItem value="SELL">Venda</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="date">Data e Hora*</Label>
+                                <Input
+                                    id="date"
+                                    type="datetime-local"
+                                    value={formData.transaction_date}
+                                    onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                                    required
+                                />
+                                {errors.transaction_date && <p className="text-sm text-destructive">{errors.transaction_date}</p>}
+                            </div>
                         </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="material">Material*</Label>
                             <div className="flex gap-2">

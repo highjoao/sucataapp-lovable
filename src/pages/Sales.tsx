@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
+import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
 
 interface Material {
   id: string;
@@ -47,6 +48,7 @@ const Sales = () => {
 
   // Quick Create State
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
+  const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     materialId: "",
@@ -248,12 +250,21 @@ const Sales = () => {
                 <Label>Fornecedor (opcional)</Label>
                 <Select
                   value={formData.supplierId}
-                  onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      setIsCreateSupplierOpen(true);
+                      return;
+                    }
+                    setFormData({ ...formData, supplierId: value });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o fornecedor" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="new" className="text-primary font-medium">
+                      + Cadastrar Novo Fornecedor
+                    </SelectItem>
                     <SelectItem value="none">Nenhum</SelectItem>
                     {suppliers.map((supplier) => (
                       <SelectItem key={supplier.id} value={supplier.id}>
@@ -310,6 +321,15 @@ const Sales = () => {
         onCreated={(materialId) => {
           fetchMaterials(); // Refresh list
           setFormData({ ...formData, materialId }); // Auto-select
+        }}
+      />
+
+      <QuickCreateSupplier
+        open={isCreateSupplierOpen}
+        onOpenChange={setIsCreateSupplierOpen}
+        onCreated={(supplierId) => {
+          fetchSuppliers(); // Refresh list
+          setFormData({ ...formData, supplierId }); // Auto-select
         }}
       />
 

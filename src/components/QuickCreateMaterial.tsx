@@ -89,7 +89,7 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
               <Label htmlFor="quick-unit">Unidade de Medida*</Label>
               <Select
                 value={formData.unit_of_measure}
-                onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
+                onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value as MaterialFormData["unit_of_measure"] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a unidade" />

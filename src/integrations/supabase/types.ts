@@ -144,6 +144,7 @@ export type Database = {
           profit: number
           quantity: number
           sale_date: string
+          supplier_id: string | null
           total_price: number
           unit_price: number
           user_id: string
@@ -157,6 +158,7 @@ export type Database = {
           profit: number
           quantity: number
           sale_date?: string
+          supplier_id?: string | null
           total_price: number
           unit_price: number
           user_id: string
@@ -170,6 +172,7 @@ export type Database = {
           profit?: number
           quantity?: number
           sale_date?: string
+          supplier_id?: string | null
           total_price?: number
           unit_price?: number
           user_id?: string
@@ -180,6 +183,13 @@ export type Database = {
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {

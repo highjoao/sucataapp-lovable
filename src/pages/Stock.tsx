@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Package, Search, Filter } from "lucide-react";
+import { Plus, Package, Search, Filter, DollarSign } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/formatters";
+import { TransactionDialog } from "@/components/TransactionDialog";
+import type { TransactionFormData } from "@/lib/validations";
 
 interface StockItem {
   material_id: string;
@@ -34,6 +36,15 @@ const Stock = () => {
   const [sortBy, setSortBy] = useState<"name" | "quantity" | "value">("name");
   const [minQuantity, setMinQuantity] = useState<string>("");
   const [minValue, setMinValue] = useState<string>("");
+
+  // Estado para transação de venda
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [transactionInitialData, setTransactionInitialData] = useState<Partial<TransactionFormData>>({
+    type: "SELL",
+    material_id: "",
+    quantity: 0,
+    price_per_unit: 0,
+  });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -87,7 +98,7 @@ const Stock = () => {
 
     // Filtro de valor mínimo
     if (minValue && !isNaN(parseFloat(minValue))) {
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         item.total_stock_value >= parseFloat(minValue)
       );
     }
@@ -141,6 +152,16 @@ const Stock = () => {
     setIsLoading(false);
   };
 
+  const handleSellClick = (materialId: string) => {
+    setTransactionInitialData({
+      type: "SELL",
+      material_id: materialId,
+      quantity: 0,
+      price_per_unit: 0,
+    });
+    setIsTransactionDialogOpen(true);
+  };
+
   const clearFilters = () => {
     setSearchTerm("");
     setShowOnlyInStock(false);
@@ -179,12 +200,22 @@ const Stock = () => {
               </div>
               <div className="space-y-2">
                 <Label>Unidade de Medida</Label>
-                <Input
+                {/* Improvement #4: Standardize Unit of Measure */}
+                <Select
                   value={formData.unit_of_measure}
-                  onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
-                  placeholder="Ex: kg, ton, un..."
-                  required
-                />
+                  onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kg">KG</SelectItem>
+                    <SelectItem value="g">G</SelectItem>
+                    <SelectItem value="un">UN</SelectItem>
+                    <SelectItem value="ton">TON</SelectItem>
+                    <SelectItem value="peca">Peça</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Cadastrando..." : "Cadastrar Material"}
@@ -319,6 +350,16 @@ const Stock = () => {
                     {formatCurrency(item.total_stock_value)}
                   </p>
                 </div>
+                {/* Improvement #1: Direct Sale Button */}
+                <Button
+                  className="w-full mt-2"
+                  variant="secondary"
+                  onClick={() => handleSellClick(item.material_id)}
+                  disabled={item.current_stock <= 0}
+                >
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  VENDER
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -355,6 +396,15 @@ const Stock = () => {
           </CardContent>
         </Card>
       )}
+
+      <TransactionDialog
+        open={isTransactionDialogOpen}
+        onOpenChange={(open) => {
+          setIsTransactionDialogOpen(open);
+          if (!open) fetchStock(); // Refresh stock when dialog closes
+        }}
+        initialData={transactionInitialData}
+      />
     </div>
   );
 };

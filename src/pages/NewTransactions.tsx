@@ -1,154 +1,51 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useStockData } from "@/hooks/useStockData";
-import { useMaterials } from "@/hooks/useMaterials";
-import { useSuppliers } from "@/hooks/useSuppliers";
-import { transactionSchema, type TransactionFormData } from "@/lib/validations";
-import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
-import { VoiceRecognition } from "@/components/VoiceRecognition";
-import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
-import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
-import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Sparkles, AlertCircle, Pencil, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { TransactionDialog } from "@/components/TransactionDialog";
+import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import type { Tables } from "@/integrations/supabase/types";
+import type { TransactionFormData } from "@/lib/validations";
 
 const NewTransactions = () => {
-  const { transactions, isLoading, createTransaction, isCreating, deleteTransaction, isDeleting, updateTransaction, isUpdating } = useTransactions();
-  const { stockData } = useStockData();
-  const { materials } = useMaterials();
-  const { suppliers } = useSuppliers();
+  const { transactions, isLoading, deleteTransaction, isDeleting, isUpdating } = useTransactions();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
-  const [formData, setFormData] = useState<TransactionFormData>({
+
+  // State for passing data to the dialog
+  const [dialogInitialData, setDialogInitialData] = useState<Partial<TransactionFormData>>({
     type: "BUY",
     material_id: "",
     supplier_id: "",
     quantity: 0,
     price_per_unit: 0,
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormData, string>>>({});
-  const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
-  const [confidenceScore, setConfidenceScore] = useState<number>(0);
 
-  const materialsForSelection = useMemo(() => {
-    if (formData.type === 'BUY') {
-      return materials;
-    }
-
-    // Mapeia o estoque para um objeto de fácil consulta
-    const stockMap = stockData.reduce((acc, item) => {
-      acc[item.material_id] = item.quantity;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Filtra os materiais que têm estoque positivo
-    return materials.filter(material => {
-      const stock = stockMap[material.id] || 0;
-      return stock > 0;
-    });
-  }, [materials, stockData, formData.type]);
-
-  const handleVoiceTranscript = (transcript: string) => {
-    // Extrai entidades do texto usando PLN
-    const entities = extractEntitiesFromText(transcript, materials);
-    const score = calculateConfidenceScore(entities);
-    const feedback = getExtractionFeedback(entities);
-
-    setConfidenceScore(score);
-    setNlpFeedback(feedback);
-
-    // Pré-preenche o formulário com os dados extraídos
-    if (entities.type) {
-      setFormData((prev) => ({ ...prev, type: entities.type! }));
-    }
-
-    if (entities.quantity && entities.quantity > 0) {
-      setFormData((prev) => ({ ...prev, quantity: entities.quantity! }));
-    }
-
-    if (entities.materialName) {
-      const material = materials.find(
-        (m) => m.name.toLowerCase() === entities.materialName?.toLowerCase()
-      );
-      if (material) {
-        setFormData((prev) => ({ ...prev, material_id: material.id }));
-      }
-    }
-
-    if (entities.pricePerUnit && entities.pricePerUnit > 0) {
-      setFormData((prev) => ({ ...prev, price_per_unit: entities.pricePerUnit! }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (isCreating || isUpdating) {
-      return;
-    }
-
-    setErrors({});
-
-    const result = transactionSchema.safeParse(formData);
-    if (!result.success) {
-      const fieldErrors: Partial<Record<keyof TransactionFormData, string>> = {};
-      result.error.errors.forEach((error) => {
-        if (error.path[0]) {
-          fieldErrors[error.path[0] as keyof TransactionFormData] = error.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    if (isEditMode && editingId) {
-      updateTransaction({ 
-        id: editingId, 
-        data: result.data as any 
-      });
-    } else {
-      createTransaction(result.data as any);
-    }
-    
-    handleDialogClose();
-  };
-
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
+  const handleCreateClick = () => {
     setIsEditMode(false);
     setEditingId(null);
-    setFormData({
+    setDialogInitialData({
       type: "BUY",
       material_id: "",
       supplier_id: "",
       quantity: 0,
       price_per_unit: 0,
     });
-    setErrors({});
-    setNlpFeedback([]);
-    setConfidenceScore(0);
+    setIsDialogOpen(true);
   };
 
   const handleEdit = (transaction: Tables<"transactions">) => {
     setIsEditMode(true);
     setEditingId(transaction.id);
-    setFormData({
+    setDialogInitialData({
       type: transaction.type as "BUY" | "SELL",
       material_id: transaction.material_id,
       supplier_id: transaction.supplier_id || "",
@@ -198,7 +95,14 @@ const NewTransactions = () => {
           data.map((transaction) => (
             <TableRow key={transaction.id}>
               <TableCell>
-                {new Date(transaction.transaction_date || transaction.created_at).toLocaleDateString("pt-BR")}
+                {/* Improvement #5: Show date and time */}
+                {new Date(transaction.transaction_date || transaction.created_at).toLocaleString("pt-BR", {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
               </TableCell>
               <TableCell className="font-medium">{transaction.materials?.name}</TableCell>
               <TableCell>{transaction.suppliers?.name || "-"}</TableCell>
@@ -245,161 +149,19 @@ const NewTransactions = () => {
             Gerencie compras e vendas com atualização automática de estoque
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Transação
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{isEditMode ? "Editar Transação" : "Nova Transação"}</DialogTitle>
-              <DialogDescription>
-                {isEditMode 
-                  ? "Edite a transação. O estoque será recalculado automaticamente." 
-                  : "Registre uma compra ou venda. O estoque será atualizado automaticamente."}
-              </DialogDescription>
-            </DialogHeader>
 
-            <div className="space-y-4">
-              {/* Reconhecimento de Voz */}
-              <VoiceRecognition
-                onTranscript={handleVoiceTranscript}
-                isDisabled={isCreating}
-              />
+        <Button onClick={handleCreateClick}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova Transação
+        </Button>
 
-              {/* Feedback do PLN */}
-              {nlpFeedback.length > 0 && (
-                <Alert variant={confidenceScore === 100 ? "default" : "destructive"}>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="h-4 w-4" />
-                        <span className="font-semibold">
-                          Confiança: {confidenceScore}%
-                        </span>
-                      </div>
-                      {nlpFeedback.map((feedback, idx) => (
-                        <p key={idx} className="text-sm">
-                          {feedback}
-                        </p>
-                      ))}
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo de Transação*</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: "BUY" | "SELL") => setFormData({ ...formData, type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="BUY">Compra</SelectItem>
-                      <SelectItem value="SELL">Venda</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="material">Material*</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={formData.material_id}
-                      onValueChange={(value) => setFormData({ ...formData, material_id: value })}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Selecione o material" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materialsForSelection.map((material) => (
-                          <SelectItem key={material.id} value={material.id}>
-                            {material.name} ({material.unit_of_measure})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <QuickCreateMaterial
-                      onCreated={(materialId) => setFormData({ ...formData, material_id: materialId })}
-                    />
-                  </div>
-                  {errors.material_id && <p className="text-sm text-destructive">{errors.material_id}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="supplier">Fornecedor (Opcional)</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={formData.supplier_id}
-                      onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Selecione o fornecedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {suppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <QuickCreateSupplier
-                      onCreated={(supplierId) => setFormData({ ...formData, supplier_id: supplierId })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantidade*</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    step="0.001"
-                    placeholder="Ex: 100.5"
-                    value={formData.quantity || ""}
-                    onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-                  />
-                  {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Preço Unitário (R$)*</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="Ex: 25.50"
-                    value={formData.price_per_unit || ""}
-                    onChange={(e) => setFormData({ ...formData, price_per_unit: parseFloat(e.target.value) || 0 })}
-                  />
-                  {errors.price_per_unit && <p className="text-sm text-destructive">{errors.price_per_unit}</p>}
-                </div>
-                {formData.quantity > 0 && formData.price_per_unit > 0 && (
-                  <div className="rounded-lg bg-muted p-3">
-                    <p className="text-sm font-medium">
-                      Total: {formatCurrency(formData.quantity * formData.price_per_unit)}
-                    </p>
-                  </div>
-                )}
-                <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={isCreating || isUpdating}>
-                    {isEditMode 
-                      ? (isUpdating ? "Atualizando..." : "Atualizar Transação")
-                      : (isCreating ? "Salvando..." : "Salvar Transação")}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <TransactionDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          initialData={dialogInitialData}
+          isEditMode={isEditMode}
+          transactionId={editingId || undefined}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

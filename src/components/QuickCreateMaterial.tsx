@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMaterials } from "@/hooks/useMaterials";
 import { materialSchema, type MaterialFormData } from "@/lib/validations";
 import { Plus } from "lucide-react";
@@ -16,7 +17,7 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState<MaterialFormData>({
     name: "",
-    unit_of_measure: "",
+    unit_of_measure: "kg", // Default to kg
   });
   const [errors, setErrors] = useState<Partial<Record<keyof MaterialFormData, string>>>({});
 
@@ -39,7 +40,7 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
     createMaterial.mutate(result.data as any, {
       onSuccess: (data: any) => {
         setIsOpen(false);
-        setFormData({ name: "", unit_of_measure: "" });
+        setFormData({ name: "", unit_of_measure: "kg" });
         if (onCreated && data?.id) {
           onCreated(data.id);
         }
@@ -49,7 +50,7 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
 
   const handleClose = () => {
     setIsOpen(false);
-    setFormData({ name: "", unit_of_measure: "" });
+    setFormData({ name: "", unit_of_measure: "kg" });
     setErrors({});
   };
 
@@ -86,12 +87,21 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
             </div>
             <div className="space-y-2">
               <Label htmlFor="quick-unit">Unidade de Medida*</Label>
-              <Input
-                id="quick-unit"
-                placeholder="Ex: KG, TON, UN"
+              <Select
                 value={formData.unit_of_measure}
-                onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
-              />
+                onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="kg">KG</SelectItem>
+                  <SelectItem value="g">G</SelectItem>
+                  <SelectItem value="un">UN</SelectItem>
+                  <SelectItem value="ton">TON</SelectItem>
+                  <SelectItem value="peca">Peça</SelectItem>
+                </SelectContent>
+              </Select>
               {errors.unit_of_measure && <p className="text-sm text-destructive">{errors.unit_of_measure}</p>}
             </div>
             <div className="flex gap-2 justify-end">

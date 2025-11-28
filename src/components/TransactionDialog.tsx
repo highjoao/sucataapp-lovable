@@ -260,7 +260,7 @@ export const TransactionDialog = ({
                                     value={formData.material_id}
                                     onValueChange={(value) => {
                                         if (value === "new") {
-                                            setIsCreateMaterialOpen(true);
+                                            setTimeout(() => setIsCreateMaterialOpen(true), 100);
                                             return;
                                         }
                                         setFormData({ ...formData, material_id: value });
@@ -290,7 +290,7 @@ export const TransactionDialog = ({
                                     value={formData.supplier_id}
                                     onValueChange={(value) => {
                                         if (value === "new") {
-                                            setIsCreateSupplierOpen(true);
+                                            setTimeout(() => setIsCreateSupplierOpen(true), 100);
                                             return;
                                         }
                                         setFormData({ ...formData, supplier_id: value });

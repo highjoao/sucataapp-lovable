@@ -225,7 +225,7 @@ const Sales = () => {
                   value={formData.materialId}
                   onValueChange={(value) => {
                     if (value === "new") {
-                      setIsCreateMaterialOpen(true);
+                      setTimeout(() => setIsCreateMaterialOpen(true), 100);
                       return;
                     }
                     setFormData({ ...formData, materialId: value });
@@ -252,7 +252,7 @@ const Sales = () => {
                   value={formData.supplierId}
                   onValueChange={(value) => {
                     if (value === "new") {
-                      setIsCreateSupplierOpen(true);
+                      setTimeout(() => setIsCreateSupplierOpen(true), 100);
                       return;
                     }
                     setFormData({ ...formData, supplierId: value });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Sparkles, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
+import { VoiceRecognition } from "@/components/VoiceRecognition";
+import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
+import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { useStockData } from "@/hooks/useStockData";
 
 interface Material {
   id: string;
@@ -45,10 +50,22 @@ const Sales = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { stockData } = useStockData();
 
   // Quick Create State
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
   const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
+
+  // NLP State
+  const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
+  const [confidenceScore, setConfidenceScore] = useState<number>(0);
+
+  // Helper to get current local datetime string for input
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
 
   const [formData, setFormData] = useState({
     materialId: "",
@@ -56,6 +73,7 @@ const Sales = () => {
     quantity: "",
     unitPrice: "",
     notes: "",
+    saleDate: getCurrentDateTime(),
   });
 
   const fetchMaterials = async () => {
@@ -107,6 +125,19 @@ const Sales = () => {
     fetchSales();
   }, []);
 
+  // Calculate current stock for selected material
+  const currentStock = useMemo(() => {
+    if (!formData.materialId) return 0;
+    const item = stockData.find(s => s.material_id === formData.materialId);
+    return item ? item.quantity : 0;
+  }, [stockData, formData.materialId]);
+
+  const selectedMaterialUnit = useMemo(() => {
+    if (!formData.materialId) return "";
+    const material = materials.find(m => m.id === formData.materialId);
+    return material ? material.unit_of_measure : "";
+  }, [materials, formData.materialId]);
+
   const calculateCostPrice = async (materialId: string, quantity: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 0;
@@ -122,6 +153,32 @@ const Sales = () => {
 
     const avgCost = purchases.reduce((sum, p) => sum + Number(p.unit_price), 0) / purchases.length;
     return avgCost * quantity;
+  };
+
+  const handleVoiceTranscript = (transcript: string) => {
+    const entities = extractEntitiesFromText(transcript, materials);
+    const score = calculateConfidenceScore(entities);
+    const feedback = getExtractionFeedback(entities);
+
+    setConfidenceScore(score);
+    setNlpFeedback(feedback);
+
+    if (entities.quantity && entities.quantity > 0) {
+      setFormData((prev) => ({ ...prev, quantity: entities.quantity!.toString() }));
+    }
+
+    if (entities.materialName) {
+      const material = materials.find(
+        (m) => m.name.toLowerCase() === entities.materialName?.toLowerCase()
+      );
+      if (material) {
+        setFormData((prev) => ({ ...prev, materialId: material.id }));
+      }
+    }
+
+    if (entities.pricePerUnit && entities.pricePerUnit > 0) {
+      setFormData((prev) => ({ ...prev, unitPrice: entities.pricePerUnit!.toString() }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,6 +236,7 @@ const Sales = () => {
       cost_price: costPrice,
       profit,
       notes: formData.notes || null,
+      sale_date: new Date(formData.saleDate).toISOString(),
     });
 
     if (error) {
@@ -193,7 +251,16 @@ const Sales = () => {
         description: `Lucro de R$ ${profit.toFixed(2)}`,
       });
       setIsOpen(false);
-      setFormData({ materialId: "", supplierId: "none", quantity: "", unitPrice: "", notes: "" });
+      setFormData({
+        materialId: "",
+        supplierId: "none",
+        quantity: "",
+        unitPrice: "",
+        notes: "",
+        saleDate: getCurrentDateTime()
+      });
+      setNlpFeedback([]);
+      setConfidenceScore(0);
       fetchSales();
     }
 
@@ -207,110 +274,188 @@ const Sales = () => {
           <h1 className="text-3xl font-bold">Vendas</h1>
           <p className="text-muted-foreground">Registre suas vendas e acompanhe o lucro</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            setFormData(prev => ({ ...prev, saleDate: getCurrentDateTime() }));
+            setNlpFeedback([]);
+            setConfidenceScore(0);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Nova Venda
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Cadastrar Venda</DialogTitle>
+              <DialogDescription>
+                Registre uma venda. O estoque será atualizado automaticamente.
+              </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Material</Label>
-                <Select
-                  value={formData.materialId}
-                  onValueChange={(value) => {
-                    if (value === "new") {
-                      setTimeout(() => setIsCreateMaterialOpen(true), 100);
-                      return;
-                    }
-                    setFormData({ ...formData, materialId: value });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o material" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new" className="text-primary font-medium">
-                      + Cadastrar Novo Material
-                    </SelectItem>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.name} ({material.unit_of_measure})
+
+            <div className="space-y-4">
+              <VoiceRecognition
+                onTranscript={handleVoiceTranscript}
+                isDisabled={isLoading}
+              />
+
+              {nlpFeedback.length > 0 && (
+                <Alert variant={confidenceScore === 100 ? "default" : "destructive"}>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="font-semibold">
+                          Confiança: {confidenceScore}%
+                        </span>
+                      </div>
+                      {nlpFeedback.map((feedback, idx) => (
+                        <p key={idx} className="text-sm">
+                          {feedback}
+                        </p>
+                      ))}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data e Hora*</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formData.saleDate}
+                      onChange={(e) => setFormData({ ...formData, saleDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Material*</Label>
+                  <Select
+                    value={formData.materialId}
+                    onValueChange={(value) => {
+                      if (value === "new") {
+                        setTimeout(() => setIsCreateMaterialOpen(true), 100);
+                        return;
+                      }
+                      setFormData({ ...formData, materialId: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new" className="text-primary font-medium">
+                        + Cadastrar Novo Material
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Fornecedor (opcional)</Label>
-                <Select
-                  value={formData.supplierId}
-                  onValueChange={(value) => {
-                    if (value === "new") {
-                      setTimeout(() => setIsCreateSupplierOpen(true), 100);
-                      return;
-                    }
-                    setFormData({ ...formData, supplierId: value });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o fornecedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new" className="text-primary font-medium">
-                      + Cadastrar Novo Fornecedor
-                    </SelectItem>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
+                      {materials.map((material) => (
+                        <SelectItem key={material.id} value={material.id}>
+                          {material.name} ({material.unit_of_measure})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fornecedor (opcional)</Label>
+                  <Select
+                    value={formData.supplierId}
+                    onValueChange={(value) => {
+                      if (value === "new") {
+                        setTimeout(() => setIsCreateSupplierOpen(true), 100);
+                        return;
+                      }
+                      setFormData({ ...formData, supplierId: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o fornecedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new" className="text-primary font-medium">
+                        + Cadastrar Novo Fornecedor
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Quantidade</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="999999"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Preço de Venda Unitário (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="999999"
-                  value={formData.unitPrice}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Adicione observações (opcional)"
-                  maxLength={500}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Cadastrando..." : "Cadastrar Venda"}
-              </Button>
-            </form>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Quantidade*</Label>
+                    {formData.materialId && (
+                      <span className="text-sm text-muted-foreground">
+                        Disponível: {formatNumber(currentStock)} {selectedMaterialUnit}
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="999999"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    required
+                    placeholder="Ex: 100.5"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preço de Venda Unitário (R$)*</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="999999"
+                    value={formData.unitPrice}
+                    onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                    required
+                    placeholder="Ex: 25.50"
+                  />
+                </div>
+
+                {formData.quantity && formData.unitPrice && (
+                  <div className="rounded-lg bg-muted p-3">
+                    <p className="text-sm font-medium">
+                      Total: {formatCurrency(parseFloat(formData.quantity) * parseFloat(formData.unitPrice))}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Adicione observações (opcional)"
+                    maxLength={500}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Cadastrando..." : "Cadastrar Venda"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

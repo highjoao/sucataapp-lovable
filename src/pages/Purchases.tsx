@@ -7,11 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Filter } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Filter, Sparkles, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
+import { VoiceRecognition } from "@/components/VoiceRecognition";
+import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
+import { formatCurrency } from "@/lib/formatters";
 
 interface Material {
   id: string;
@@ -45,12 +49,24 @@ const Purchases = () => {
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
   const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
 
+  // NLP State
+  const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
+  const [confidenceScore, setConfidenceScore] = useState<number>(0);
+
+  // Helper to get current local datetime string for input
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+
   const [formData, setFormData] = useState({
     materialId: "",
     supplierId: "none",
     quantity: "",
     unitPrice: "",
     notes: "",
+    purchaseDate: getCurrentDateTime(),
   });
 
   const fetchMaterials = async () => {
@@ -98,6 +114,32 @@ const Purchases = () => {
       setFilteredPurchases(purchases.filter(p => p.supplier_id === selectedSupplier));
     }
   }, [purchases, selectedSupplier]);
+
+  const handleVoiceTranscript = (transcript: string) => {
+    const entities = extractEntitiesFromText(transcript, materials);
+    const score = calculateConfidenceScore(entities);
+    const feedback = getExtractionFeedback(entities);
+
+    setConfidenceScore(score);
+    setNlpFeedback(feedback);
+
+    if (entities.quantity && entities.quantity > 0) {
+      setFormData((prev) => ({ ...prev, quantity: entities.quantity!.toString() }));
+    }
+
+    if (entities.materialName) {
+      const material = materials.find(
+        (m) => m.name.toLowerCase() === entities.materialName?.toLowerCase()
+      );
+      if (material) {
+        setFormData((prev) => ({ ...prev, materialId: material.id }));
+      }
+    }
+
+    if (entities.pricePerUnit && entities.pricePerUnit > 0) {
+      setFormData((prev) => ({ ...prev, unitPrice: entities.pricePerUnit!.toString() }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +192,7 @@ const Purchases = () => {
       unit_price: unitPrice,
       total_price: totalPrice,
       notes: formData.notes || null,
+      purchase_date: new Date(formData.purchaseDate).toISOString(),
     });
 
     if (error) {
@@ -164,7 +207,16 @@ const Purchases = () => {
         description: "A compra foi adicionada ao estoque automaticamente.",
       });
       setIsOpen(false);
-      setFormData({ materialId: "", supplierId: "none", quantity: "", unitPrice: "", notes: "" });
+      setFormData({
+        materialId: "",
+        supplierId: "none",
+        quantity: "",
+        unitPrice: "",
+        notes: "",
+        purchaseDate: getCurrentDateTime()
+      });
+      setNlpFeedback([]);
+      setConfidenceScore(0);
       fetchPurchases();
     }
 
@@ -178,110 +230,181 @@ const Purchases = () => {
           <h1 className="text-3xl font-bold">Compras</h1>
           <p className="text-muted-foreground">Registre suas compras de materiais</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            setFormData(prev => ({ ...prev, purchaseDate: getCurrentDateTime() }));
+            setNlpFeedback([]);
+            setConfidenceScore(0);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Nova Compra
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Cadastrar Compra</DialogTitle>
+              <DialogDescription>
+                Registre uma compra. O estoque será atualizado automaticamente.
+              </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Material</Label>
-                <Select
-                  value={formData.materialId}
-                  onValueChange={(value) => {
-                    if (value === "new") {
-                      setTimeout(() => setIsCreateMaterialOpen(true), 100);
-                      return;
-                    }
-                    setFormData({ ...formData, materialId: value });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o material" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new" className="text-primary font-medium">
-                      + Cadastrar Novo Material
-                    </SelectItem>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.name} ({material.unit_of_measure})
+
+            <div className="space-y-4">
+              <VoiceRecognition
+                onTranscript={handleVoiceTranscript}
+                isDisabled={isLoading}
+              />
+
+              {nlpFeedback.length > 0 && (
+                <Alert variant={confidenceScore === 100 ? "default" : "destructive"}>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="font-semibold">
+                          Confiança: {confidenceScore}%
+                        </span>
+                      </div>
+                      {nlpFeedback.map((feedback, idx) => (
+                        <p key={idx} className="text-sm">
+                          {feedback}
+                        </p>
+                      ))}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data e Hora*</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formData.purchaseDate}
+                      onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Material*</Label>
+                  <Select
+                    value={formData.materialId}
+                    onValueChange={(value) => {
+                      if (value === "new") {
+                        setTimeout(() => setIsCreateMaterialOpen(true), 100);
+                        return;
+                      }
+                      setFormData({ ...formData, materialId: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new" className="text-primary font-medium">
+                        + Cadastrar Novo Material
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Fornecedor (Opcional)</Label>
-                <Select
-                  value={formData.supplierId}
-                  onValueChange={(value) => {
-                    if (value === "new") {
-                      setTimeout(() => setIsCreateSupplierOpen(true), 100);
-                      return;
-                    }
-                    setFormData({ ...formData, supplierId: value });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o fornecedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new" className="text-primary font-medium">
-                      + Cadastrar Novo Fornecedor
-                    </SelectItem>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
+                      {materials.map((material) => (
+                        <SelectItem key={material.id} value={material.id}>
+                          {material.name} ({material.unit_of_measure})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fornecedor (Opcional)</Label>
+                  <Select
+                    value={formData.supplierId}
+                    onValueChange={(value) => {
+                      if (value === "new") {
+                        setTimeout(() => setIsCreateSupplierOpen(true), 100);
+                        return;
+                      }
+                      setFormData({ ...formData, supplierId: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o fornecedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new" className="text-primary font-medium">
+                        + Cadastrar Novo Fornecedor
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Quantidade</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="999999"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Preço Unitário (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="999999"
-                  value={formData.unitPrice}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Adicione observações (opcional)"
-                  maxLength={500}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Cadastrando..." : "Cadastrar Compra"}
-              </Button>
-            </form>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Quantidade*</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="999999"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    required
+                    placeholder="Ex: 100.5"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preço Unitário (R$)*</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="999999"
+                    value={formData.unitPrice}
+                    onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                    required
+                    placeholder="Ex: 25.50"
+                  />
+                </div>
+
+                {formData.quantity && formData.unitPrice && (
+                  <div className="rounded-lg bg-muted p-3">
+                    <p className="text-sm font-medium">
+                      Total: {formatCurrency(parseFloat(formData.quantity) * parseFloat(formData.unitPrice))}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Adicione observações (opcional)"
+                    maxLength={500}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Cadastrando..." : "Cadastrar Compra"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -10,16 +10,22 @@ import { Plus } from "lucide-react";
 
 interface QuickCreateMaterialProps {
   onCreated?: (materialId: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => {
+export const QuickCreateMaterial = ({ onCreated, open: controlledOpen, onOpenChange: setControlledOpen }: QuickCreateMaterialProps) => {
   const { createMaterial, isCreating } = useMaterials();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [formData, setFormData] = useState<MaterialFormData>({
     name: "",
     unit_of_measure: "kg", // Default to kg
   });
   const [errors, setErrors] = useState<Partial<Record<keyof MaterialFormData, string>>>({});
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? setControlledOpen : setInternalOpen;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +45,7 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
 
     createMaterial.mutate(result.data as any, {
       onSuccess: (data: any) => {
-        setIsOpen(false);
+        if (setIsOpen) setIsOpen(false);
         setFormData({ name: "", unit_of_measure: "kg" });
         if (onCreated && data?.id) {
           onCreated(data.id);
@@ -49,24 +55,29 @@ export const QuickCreateMaterial = ({ onCreated }: QuickCreateMaterialProps) => 
   };
 
   const handleClose = () => {
-    setIsOpen(false);
+    if (setIsOpen) setIsOpen(false);
     setFormData({ name: "", unit_of_measure: "kg" });
     setErrors({});
   };
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={() => setIsOpen(true)}
-        className="shrink-0"
-      >
-        <Plus className="h-4 w-4" />
-      </Button>
+      {!isControlled && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setInternalOpen(true)}
+          className="shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      )}
 
-      <Dialog open={isOpen} onOpenChange={handleClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) handleClose();
+        else if (setIsOpen) setIsOpen(true);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Material Rapidamente</DialogTitle>

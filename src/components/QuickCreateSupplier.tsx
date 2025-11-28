@@ -9,17 +9,23 @@ import { Plus } from "lucide-react";
 
 interface QuickCreateSupplierProps {
   onCreated?: (supplierId: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const QuickCreateSupplier = ({ onCreated }: QuickCreateSupplierProps) => {
+export const QuickCreateSupplier = ({ onCreated, open: controlledOpen, onOpenChange: setControlledOpen }: QuickCreateSupplierProps) => {
   const { createSupplier, isCreating } = useSuppliers();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [formData, setFormData] = useState<SupplierFormData>({
     name: "",
     contact: "",
     address: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierFormData, string>>>({});
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled ? setControlledOpen : setInternalOpen;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +45,7 @@ export const QuickCreateSupplier = ({ onCreated }: QuickCreateSupplierProps) => 
 
     createSupplier(result.data as any, {
       onSuccess: (data: any) => {
-        setIsOpen(false);
+        if (setIsOpen) setIsOpen(false);
         setFormData({ name: "", contact: "", address: "" });
         if (onCreated && data?.id) {
           onCreated(data.id);
@@ -49,24 +55,29 @@ export const QuickCreateSupplier = ({ onCreated }: QuickCreateSupplierProps) => 
   };
 
   const handleClose = () => {
-    setIsOpen(false);
+    if (setIsOpen) setIsOpen(false);
     setFormData({ name: "", contact: "", address: "" });
     setErrors({});
   };
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={() => setIsOpen(true)}
-        className="shrink-0"
-      >
-        <Plus className="h-4 w-4" />
-      </Button>
+      {!isControlled && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setInternalOpen(true)}
+          className="shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      )}
 
-      <Dialog open={isOpen} onOpenChange={handleClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) handleClose();
+        else if (setIsOpen) setIsOpen(true);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Fornecedor Rapidamente</DialogTitle>

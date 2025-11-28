@@ -8,6 +8,14 @@ import { formatCurrency } from "@/lib/formatters";
 import { DateRangeFilter, DateRange } from "@/components/DateRangeFilter";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface CashFlowData {
   date: string;
@@ -16,10 +24,19 @@ interface CashFlowData {
   saldo: number;
 }
 
+interface TransactionDetail {
+  id: string;
+  date: Date;
+  type: 'buy' | 'sell';
+  description: string;
+  value: number;
+}
+
 const CashFlow = () => {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<DateRange>("month");
   const [cashFlowData, setCashFlowData] = useState<CashFlowData[]>([]);
+  const [detailedTransactions, setDetailedTransactions] = useState<TransactionDetail[]>([]);
   const [totalEntradas, setTotalEntradas] = useState(0);
   const [totalSaidas, setTotalSaidas] = useState(0);
   const [saldoFinal, setSaldoFinal] = useState(0);
@@ -39,7 +56,6 @@ const CashFlow = () => {
       if (!user) return;
 
       // Get User Name
-      // Try to get from metadata or use email part
       const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "Usuário";
       setUserName(name);
 
@@ -102,7 +118,7 @@ const CashFlow = () => {
       // Get sales (entradas)
       const { data: sales } = await supabase
         .from("sales")
-        .select("sale_date, total_price")
+        .select("id, sale_date, total_price, materials(name)")
         .eq("user_id", user.id)
         .gte("sale_date", start.toISOString())
         .lte("sale_date", end.toISOString())
@@ -111,13 +127,40 @@ const CashFlow = () => {
       // Get purchases (saídas)
       const { data: purchases } = await supabase
         .from("purchases")
-        .select("purchase_date, total_price")
+        .select("id, purchase_date, total_price, materials(name)")
         .eq("user_id", user.id)
         .gte("purchase_date", start.toISOString())
         .lte("purchase_date", end.toISOString())
         .order("purchase_date");
 
-      // Group by date
+      // Prepare Detailed Transactions List
+      const transactions: TransactionDetail[] = [];
+
+      sales?.forEach(s => {
+        transactions.push({
+          id: s.id,
+          date: new Date(s.sale_date),
+          type: 'sell',
+          description: `Venda - ${s.materials?.name || 'Material'}`,
+          value: Number(s.total_price)
+        });
+      });
+
+      purchases?.forEach(p => {
+        transactions.push({
+          id: p.id,
+          date: new Date(p.purchase_date),
+          type: 'buy',
+          description: `Compra - ${p.materials?.name || 'Material'}`,
+          value: Number(p.total_price)
+        });
+      });
+
+      // Sort detailed transactions by date desc
+      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+      setDetailedTransactions(transactions);
+
+      // Group by date for Charts
       const dataMap = new Map<string, { entradas: number; saidas: number }>();
 
       sales?.forEach(s => {
@@ -308,7 +351,7 @@ const CashFlow = () => {
                   <YAxis
                     stroke="hsl(var(--foreground))"
                     tick={{ fill: 'hsl(var(--foreground))' }}
-                    tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
+                    tickFormatter={(value) => value.toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })}
                   />
                   <Tooltip
                     contentStyle={{
@@ -353,7 +396,7 @@ const CashFlow = () => {
                   <YAxis
                     stroke="hsl(var(--foreground))"
                     tick={{ fill: 'hsl(var(--foreground))' }}
-                    tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
+                    tickFormatter={(value) => value.toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })}
                   />
                   <Tooltip
                     contentStyle={{
@@ -377,27 +420,45 @@ const CashFlow = () => {
         </Card>
       </div>
 
-      {cashFlowData.length > 0 && (
+      {detailedTransactions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Detalhamento Diário</CardTitle>
-            <CardDescription>Movimentações detalhadas por dia</CardDescription>
+            <CardTitle>Movimentações Detalhadas</CardTitle>
+            <CardDescription>Lista de todas as transações do período</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {cashFlowData.map((item, index) => (
-                <div key={index} className="flex items-center justify-between border-b pb-2">
-                  <div className="font-medium">{item.date}</div>
-                  <div className="flex gap-4 text-sm">
-                    <span className="text-green-600">+{formatCurrency(item.entradas)}</span>
-                    <span className="text-red-600">-{formatCurrency(item.saidas)}</span>
-                    <span className={`font-bold ${item.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      = {formatCurrency(item.saldo)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data e Hora</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {detailedTransactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
+                    <TableCell>
+                      {format(transaction.date, "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>{transaction.description}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${transaction.type === 'sell'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                        {transaction.type === 'sell' ? 'Entrada' : 'Saída'}
+                      </span>
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${transaction.type === 'sell' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                      {transaction.type === 'sell' ? '+' : '-'} {formatCurrency(transaction.value)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

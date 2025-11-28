@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
-import { 
-  Recycle, 
-  ShoppingCart, 
-  TrendingUp, 
-  Package, 
+import {
+  Recycle,
+  ShoppingCart,
+  TrendingUp,
+  Package,
   LogOut,
   ArrowLeftRight,
   Boxes,
@@ -32,13 +32,13 @@ const AppSidebar = () => {
   const location = useLocation();
 
   const navItems = [
+    { to: "/cashflow", icon: DollarSign, label: "Fluxo de Caixa", color: "text-emerald-500" },
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "text-blue-500" },
     { to: "/purchases", icon: ShoppingCart, label: "Compras", color: "text-orange-500" },
     { to: "/sales", icon: TrendingUp, label: "Vendas", color: "text-green-500" },
     { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações", color: "text-purple-500" },
     { to: "/stock", icon: Package, label: "Estoque", color: "text-amber-500" },
     { to: "/suppliers", icon: Truck, label: "Fornecedores", color: "text-cyan-500" },
-    { to: "/cashflow", icon: DollarSign, label: "Fluxo de Caixa", color: "text-emerald-500" },
     { to: "/materials", icon: Boxes, label: "Materiais", color: "text-pink-500" },
   ];
 
@@ -109,9 +109,9 @@ const LayoutContent = () => {
                 <span className="text-xl font-bold text-primary-foreground">SucataApp</span>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleLogout}
               className="text-primary-foreground hover:bg-primary-foreground/10"
             >

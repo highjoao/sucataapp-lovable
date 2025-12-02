@@ -126,6 +126,16 @@ export const useTransactions = () => {
         }
         const profit = totalPrice - costPrice;
 
+        // Update Stock (Decrement)
+        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", material_id).single();
+        if (stock) {
+          const newQuantity = stock.quantity - quantity;
+          if (newQuantity < 0) throw new Error("Estoque insuficiente");
+          await supabase.from("stock").update({ quantity: newQuantity }).eq("material_id", material_id);
+        } else {
+          throw new Error("Material não encontrado no estoque");
+        }
+
         const { data, error } = await supabase.from("sales").insert({
           user_id: user.id,
           material_id,
@@ -141,6 +151,19 @@ export const useTransactions = () => {
         if (error) throw error;
         return data;
       } else {
+        // Update Stock (Increment)
+        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", material_id).single();
+        if (stock) {
+          await supabase.from("stock").update({ quantity: stock.quantity + quantity }).eq("material_id", material_id);
+        } else {
+          // Create stock entry if not exists
+          await supabase.from("stock").insert({
+            user_id: user.id,
+            material_id,
+            quantity
+          });
+        }
+
         const { data, error } = await supabase.from("purchases").insert({
           user_id: user.id,
           material_id,

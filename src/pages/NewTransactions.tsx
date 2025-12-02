@@ -96,7 +96,7 @@ const NewTransactions = () => {
             <TableRow key={transaction.id}>
               <TableCell>
                 {/* Improvement #5: Show date and time */}
-                {new Date(transaction.transaction_date || transaction.created_at).toLocaleString("pt-BR", {
+                {new Date(transaction.transaction_date).toLocaleString("pt-BR", {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',

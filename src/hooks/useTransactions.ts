@@ -129,9 +129,19 @@ export const useTransactions = () => {
         // Update Stock (Decrement)
         const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", material_id).single();
         if (stock) {
-          const newQuantity = stock.quantity - quantity;
-          if (newQuantity < 0) throw new Error("Estoque insuficiente");
-          await supabase.from("stock").update({ quantity: newQuantity }).eq("material_id", material_id);
+          const currentQty = Number(stock.quantity);
+          const sellQty = Number(quantity);
+          const newQuantity = currentQty - sellQty;
+
+          // Allow for small floating point errors (epsilon check)
+          if (newQuantity < -0.0001) {
+            throw new Error(`Estoque insuficiente. Disponível: ${currentQty}, Tentativa: ${sellQty}`);
+          }
+
+          // Ensure we don't store negative zero or tiny negative numbers
+          const finalQuantity = newQuantity < 0 ? 0 : newQuantity;
+
+          await supabase.from("stock").update({ quantity: finalQuantity }).eq("material_id", material_id);
         } else {
           throw new Error("Material não encontrado no estoque");
         }

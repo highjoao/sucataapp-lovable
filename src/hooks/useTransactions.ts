@@ -112,40 +112,7 @@ export const useTransactions = () => {
       const totalPrice = quantity * price_per_unit;
 
       if (type === "SELL") {
-        // Calculate cost price
-        const { data: purchases } = await supabase
-          .from("purchases")
-          .select("unit_price")
-          .eq("user_id", user.id)
-          .eq("material_id", material_id);
-
-        let costPrice = 0;
-        if (purchases && purchases.length > 0) {
-          const avgCost = purchases.reduce((sum, p) => sum + Number(p.unit_price), 0) / purchases.length;
-          costPrice = avgCost * quantity;
-        }
-        const profit = totalPrice - costPrice;
-
-        // Update Stock (Decrement)
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", material_id).single();
-        if (stock) {
-          const currentQty = Number(stock.quantity);
-          const sellQty = Number(quantity);
-          const newQuantity = currentQty - sellQty;
-
-          // Allow for small floating point errors (epsilon check)
-          if (newQuantity < -0.0001) {
-            throw new Error(`Estoque insuficiente. Disponível: ${currentQty}, Tentativa: ${sellQty}`);
-          }
-
-          // Ensure we don't store negative zero or tiny negative numbers
-          const finalQuantity = newQuantity < 0 ? 0 : newQuantity;
-
-          await supabase.from("stock").update({ quantity: finalQuantity }).eq("material_id", material_id);
-        } else {
-          throw new Error("Material não encontrado no estoque");
-        }
-
+        // Only insert into sales. Stock update and cost/profit calculation are handled by DB triggers.
         const { data, error } = await supabase.from("sales").insert({
           user_id: user.id,
           material_id,
@@ -153,27 +120,17 @@ export const useTransactions = () => {
           quantity,
           unit_price: price_per_unit,
           total_price: totalPrice,
-          cost_price: costPrice,
-          profit,
           sale_date: transaction_date,
-          notes: null
+          notes: null,
+          // cost_price and profit will be calculated by the trigger
+          cost_price: 0,
+          profit: 0
         }).select().single();
+
         if (error) throw error;
         return data;
       } else {
-        // Update Stock (Increment)
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", material_id).single();
-        if (stock) {
-          await supabase.from("stock").update({ quantity: stock.quantity + quantity }).eq("material_id", material_id);
-        } else {
-          // Create stock entry if not exists
-          await supabase.from("stock").insert({
-            user_id: user.id,
-            material_id,
-            quantity
-          });
-        }
-
+        // Only insert into purchases. Stock update is handled by DB triggers.
         const { data, error } = await supabase.from("purchases").insert({
           user_id: user.id,
           material_id,
@@ -184,6 +141,7 @@ export const useTransactions = () => {
           purchase_date: transaction_date,
           notes: null
         }).select().single();
+
         if (error) throw error;
         return data;
       }
@@ -192,7 +150,7 @@ export const useTransactions = () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock"] });
       queryClient.invalidateQueries({ queryKey: ["stockData"] });
-      toast({ title: "Transação registrada!", description: "Estoque atualizado e sincronizado." });
+      toast({ title: "Transação registrada!", description: "Estoque será atualizado automaticamente." });
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -206,37 +164,26 @@ export const useTransactions = () => {
       if (!user) throw new Error("Usuário não autenticado");
 
       // Try fetching from sales
-      let { data: sale } = await supabase.from("sales").select("*").eq("id", id).single();
+      let { data: sale } = await supabase.from("sales").select("id").eq("id", id).single();
       if (sale) {
-        // Revert stock for sale (increase stock)
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", sale.material_id).single();
-        if (stock) {
-          await supabase.from("stock").update({ quantity: stock.quantity + sale.quantity }).eq("material_id", sale.material_id);
-        }
+        // Just delete. Trigger handles stock reversion.
         await supabase.from("sales").delete().eq("id", id);
         return;
       }
 
       // Try fetching from purchases
-      let { data: purchase } = await supabase.from("purchases").select("*").eq("id", id).single();
+      let { data: purchase } = await supabase.from("purchases").select("id").eq("id", id).single();
       if (purchase) {
-        // Revert stock for purchase (decrease stock)
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", purchase.material_id).single();
-        if (stock) {
-          await supabase.from("stock").update({ quantity: stock.quantity - purchase.quantity }).eq("material_id", purchase.material_id);
-        }
+        // Just delete. Trigger handles stock reversion.
         await supabase.from("purchases").delete().eq("id", id);
         return;
       }
 
       // Try fetching from transactions
-      let { data: transaction } = await supabase.from("transactions").select("*").eq("id", id).single();
+      let { data: transaction } = await supabase.from("transactions").select("id").eq("id", id).single();
       if (transaction) {
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", transaction.material_id).single();
-        if (stock) {
-          const change = transaction.type === "BUY" ? -transaction.quantity : transaction.quantity;
-          await supabase.from("stock").update({ quantity: stock.quantity + change }).eq("material_id", transaction.material_id);
-        }
+        // Legacy transactions might not have triggers, but we are moving away from them.
+        // For now, just delete.
         await supabase.from("transactions").delete().eq("id", id);
         return;
       }
@@ -263,23 +210,15 @@ export const useTransactions = () => {
       // Try sales
       let { data: sale } = await supabase.from("sales").select("*").eq("id", id).single();
       if (sale) {
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", sale.material_id).single();
-        if (stock) {
-          let currentQty = stock.quantity + sale.quantity;
-          currentQty = currentQty - (data.quantity || sale.quantity);
-          await supabase.from("stock").update({ quantity: currentQty }).eq("material_id", sale.material_id);
-        }
-
         const qty = data.quantity || sale.quantity;
         const price = data.price_per_unit || sale.unit_price;
         const total = qty * price;
-        const profit = total - (sale.cost_price / sale.quantity * qty);
 
+        // Just update. Trigger handles stock adjustment and cost/profit recalculation.
         await supabase.from("sales").update({
           quantity: qty,
           unit_price: price,
           total_price: total,
-          profit: profit,
           notes: data.notes
         }).eq("id", id);
         return;
@@ -288,17 +227,11 @@ export const useTransactions = () => {
       // Try purchases
       let { data: purchase } = await supabase.from("purchases").select("*").eq("id", id).single();
       if (purchase) {
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", purchase.material_id).single();
-        if (stock) {
-          let currentQty = stock.quantity - purchase.quantity;
-          currentQty = currentQty + (data.quantity || purchase.quantity);
-          await supabase.from("stock").update({ quantity: currentQty }).eq("material_id", purchase.material_id);
-        }
-
         const qty = data.quantity || purchase.quantity;
         const price = data.price_per_unit || purchase.unit_price;
         const total = qty * price;
 
+        // Just update. Trigger handles stock adjustment.
         await supabase.from("purchases").update({
           quantity: qty,
           unit_price: price,
@@ -311,18 +244,6 @@ export const useTransactions = () => {
       // Try transactions
       let { data: transaction } = await supabase.from("transactions").select("*").eq("id", id).single();
       if (transaction) {
-        const { data: stock } = await supabase.from("stock").select("quantity").eq("material_id", transaction.material_id).single();
-        if (stock) {
-          const oldChange = transaction.type === "BUY" ? transaction.quantity : -transaction.quantity;
-          let currentQty = stock.quantity - oldChange;
-
-          const newQty = data.quantity || transaction.quantity;
-          const newChange = transaction.type === "BUY" ? newQty : -newQty;
-          currentQty = currentQty + newChange;
-
-          await supabase.from("stock").update({ quantity: currentQty }).eq("material_id", transaction.material_id);
-        }
-
         await supabase.from("transactions").update({
           quantity: data.quantity,
           price_per_unit: data.price_per_unit

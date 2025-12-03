@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           created_at: string
@@ -52,7 +84,10 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_blocked: boolean | null
+          last_seen: string | null
           phone: string | null
+          role: string | null
           updated_at: string
         }
         Insert: {
@@ -60,7 +95,10 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          is_blocked?: boolean | null
+          last_seen?: string | null
           phone?: string | null
+          role?: string | null
           updated_at?: string
         }
         Update: {
@@ -68,7 +106,10 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_blocked?: boolean | null
+          last_seen?: string | null
           phone?: string | null
+          role?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -390,6 +431,7 @@ export type Database = {
         }[]
       }
       has_pro_plan: { Args: { _user_id: string }; Returns: boolean }
+      is_admin: { Args: { user_id: string }; Returns: boolean }
       reset_user_data: { Args: never; Returns: undefined }
     }
     Enums: {

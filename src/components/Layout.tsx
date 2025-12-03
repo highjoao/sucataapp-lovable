@@ -13,8 +13,10 @@ import {
   Boxes,
   Truck,
   LayoutDashboard,
-  DollarSign
+  DollarSign,
+  Shield
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +33,16 @@ import {
 const AppSidebar = () => {
   const location = useLocation();
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile-role"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      return data;
+    }
+  });
+
   const navItems = [
     { to: "/cashflow", icon: DollarSign, label: "Fluxo de Caixa", color: "text-emerald-500" },
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "text-blue-500" },
@@ -41,6 +53,11 @@ const AppSidebar = () => {
     { to: "/suppliers", icon: Truck, label: "Fornecedores", color: "text-cyan-500" },
     { to: "/materials", icon: Boxes, label: "Materiais", color: "text-pink-500" },
   ];
+
+  // @ts-ignore
+  if (profile?.role === 'admin') {
+    navItems.push({ to: "/admin/users", icon: Shield, label: "Admin", color: "text-red-500" });
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r bg-card">

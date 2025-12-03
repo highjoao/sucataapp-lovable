@@ -12,7 +12,7 @@ export const useMaterials = () => {
   const queryClient = useQueryClient();
 
   // Fetch all materials
-  const { data: materials = [], isLoading, error } = useQuery({
+  const { data: materials = [], isLoading, error, refetch } = useQuery({
     queryKey: ["materials"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -119,6 +119,7 @@ export const useMaterials = () => {
     materials,
     isLoading,
     error,
+    refetch,
     createMaterial,
     updateMaterial,
     deleteMaterial,

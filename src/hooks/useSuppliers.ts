@@ -12,7 +12,7 @@ export const useSuppliers = () => {
   const queryClient = useQueryClient();
 
   // Fetch all suppliers
-  const { data: suppliers = [], isLoading, error } = useQuery({
+  const { data: suppliers = [], isLoading, error, refetch } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -146,6 +146,7 @@ export const useSuppliers = () => {
     suppliers,
     isLoading,
     error,
+    refetch,
     createSupplier: createSupplier.mutate,
     updateSupplier: updateSupplier.mutate,
     deleteSupplier: deleteSupplier.mutate,

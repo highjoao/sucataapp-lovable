@@ -44,6 +44,7 @@ const Purchases = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
   const { toast } = useToast();
   const { suppliers, refetch: refetchSuppliers } = useSuppliers();
+  const refetchSuppliersList = () => refetchSuppliers();
 
   // Quick Create States
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
@@ -116,7 +117,7 @@ const Purchases = () => {
   }, [purchases, selectedSupplier]);
 
   const handleVoiceTranscript = (transcript: string) => {
-    const entities = extractEntitiesFromText(transcript, materials);
+    const entities = extractEntitiesFromText(transcript, materials as any);
     const score = calculateConfidenceScore(entities);
     const feedback = getExtractionFeedback(entities);
 
@@ -422,7 +423,7 @@ const Purchases = () => {
         open={isCreateSupplierOpen}
         onOpenChange={setIsCreateSupplierOpen}
         onCreated={(supplierId) => {
-          refetchSuppliers();
+          refetchSuppliersList();
           setFormData({ ...formData, supplierId });
         }}
       />

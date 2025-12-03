@@ -37,6 +37,9 @@ export const TransactionDialog = ({
     const { stockData } = useStockData();
     const { materials, refetch: refetchMaterials } = useMaterials();
     const { suppliers, refetch: refetchSuppliers } = useSuppliers();
+    
+    const refetchMaterialsList = () => refetchMaterials();
+    const refetchSuppliersList = () => refetchSuppliers();
 
     // Quick Create States
     const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);

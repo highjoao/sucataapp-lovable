@@ -8,8 +8,8 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { Plus, ShoppingCart, TrendingUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
-import type { Tables } from "@/integrations/supabase/types";
 import type { TransactionFormData } from "@/lib/validations";
+import type { Transaction } from "@/hooks/useTransactions";
 
 const NewTransactions = () => {
   const { transactions, isLoading, deleteTransaction, isDeleting, isUpdating } = useTransactions();
@@ -42,15 +42,15 @@ const NewTransactions = () => {
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (transaction: Tables<"transactions">) => {
+  const handleEdit = (transaction: Transaction) => {
     setIsEditMode(true);
     setEditingId(transaction.id);
     setDialogInitialData({
-      type: transaction.type as "BUY" | "SELL",
+      type: transaction.type,
       material_id: transaction.material_id,
       supplier_id: transaction.supplier_id || "",
-      quantity: Number(transaction.quantity),
-      price_per_unit: Number(transaction.price_per_unit),
+      quantity: transaction.quantity,
+      price_per_unit: transaction.price_per_unit,
     });
     setIsDialogOpen(true);
   };

@@ -156,7 +156,7 @@ const Sales = () => {
   };
 
   const handleVoiceTranscript = (transcript: string) => {
-    const entities = extractEntitiesFromText(transcript, materials);
+    const entities = extractEntitiesFromText(transcript, materials as any);
     const score = calculateConfidenceScore(entities);
     const feedback = getExtractionFeedback(entities);
 

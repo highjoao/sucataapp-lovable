@@ -206,6 +206,7 @@ export type Database = {
           id: string
           material_id: string
           quantity: number
+          total_value: number | null
           updated_at: string | null
           user_id: string
         }
@@ -213,6 +214,7 @@ export type Database = {
           id?: string
           material_id: string
           quantity?: number
+          total_value?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -220,6 +222,7 @@ export type Database = {
           id?: string
           material_id?: string
           quantity?: number
+          total_value?: number | null
           updated_at?: string | null
           user_id?: string
         }

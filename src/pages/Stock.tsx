@@ -7,6 +7,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Package, Search, Filter, DollarSign } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -406,6 +417,60 @@ const Stock = () => {
         }}
         initialData={transactionInitialData}
       />
+
+      <div className="mt-8 border-t pt-6">
+        <h2 className="text-xl font-semibold text-destructive mb-4">Zona de Perigo</h2>
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-medium text-destructive">Resetar Conta</h3>
+            <p className="text-sm text-muted-foreground">
+              Isso apagará permanentemente todas as suas vendas, compras e dados de estoque.
+              Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Resetar Tudo</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. Isso excluirá permanentemente todas as suas
+                  transações de venda, compra e zerará seu estoque.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={async () => {
+                    setIsLoading(true);
+                    // @ts-ignore
+                    const { error } = await supabase.rpc("reset_user_data" as any);
+                    if (error) {
+                      toast({
+                        title: "Erro ao resetar dados",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    } else {
+                      toast({
+                        title: "Conta resetada",
+                        description: "Todos os dados foram apagados com sucesso.",
+                      });
+                      fetchStock();
+                    }
+                    setIsLoading(false);
+                  }}
+                >
+                  Sim, apagar tudo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
     </div>
   );
 };

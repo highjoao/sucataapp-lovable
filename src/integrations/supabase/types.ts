@@ -390,6 +390,7 @@ export type Database = {
         }[]
       }
       has_pro_plan: { Args: { _user_id: string }; Returns: boolean }
+      reset_user_data: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

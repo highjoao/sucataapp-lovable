@@ -44,12 +44,6 @@ export const useTransactions = () => {
         .select(`*, materials(name, unit_of_measure), suppliers(name)`)
         .eq("user_id", user.id);
 
-      // Fetch Legacy Transactions
-      const { data: legacy } = await supabase
-        .from("transactions")
-        .select(`*, materials(name, unit_of_measure), suppliers(name)`)
-        .eq("user_id", user.id);
-
       const merged: Transaction[] = [];
 
       purchases?.forEach(p => merged.push({
@@ -82,20 +76,6 @@ export const useTransactions = () => {
         notes: s.notes,
         profit: Number(s.profit),
         cost_price: Number(s.cost_price)
-      }));
-
-      legacy?.forEach(t => merged.push({
-        id: t.id,
-        type: t.type as "BUY" | "SELL",
-        transaction_date: t.transaction_date || t.created_at || "",
-        material_id: t.material_id,
-        quantity: Number(t.quantity),
-        price_per_unit: Number(t.price_per_unit),
-        total_price: Number(t.quantity) * Number(t.price_per_unit),
-        supplier_id: t.supplier_id,
-        materials: t.materials,
-        suppliers: t.suppliers,
-        source: "transactions"
       }));
 
       return merged.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());

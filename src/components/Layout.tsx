@@ -73,8 +73,8 @@ const AppSidebar = () => {
 
                 return (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.to} className="flex items-center gap-3">
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label} className="justify-start">
+                      <Link to={item.to} className="flex w-full items-center gap-3 px-2">
                         <Icon className={`h-5 w-5 ${item.color}`} />
                         <span>{item.label}</span>
                       </Link>

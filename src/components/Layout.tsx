@@ -62,7 +62,7 @@ const AppSidebar = () => {
   }
 
   return (
-    <Sidebar className="border-r bg-card w-48" collapsible="none">
+    <Sidebar className="border-r bg-card w-40" collapsible="none">
       <SidebarContent className="bg-card pt-4">
         <SidebarGroup className="bg-card">
           <SidebarGroupContent className="bg-card">

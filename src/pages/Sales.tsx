@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
-import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
 import { QuickCreateClient } from "@/components/QuickCreateClient";
 import { VoiceRecognition } from "@/components/VoiceRecognition";
 import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
@@ -23,11 +22,6 @@ interface Material {
   id: string;
   name: string;
   unit_of_measure: string;
-}
-
-interface Supplier {
-  id: string;
-  name: string;
 }
 
 interface Client {
@@ -51,7 +45,6 @@ interface Sale {
 
 const Sales = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -61,7 +54,6 @@ const Sales = () => {
 
   // Quick Create State
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
-  const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
   const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
 
   // NLP State
@@ -77,7 +69,6 @@ const Sales = () => {
 
   const [formData, setFormData] = useState({
     materialId: "",
-    supplierId: "none",
     clientId: "none",
     quantity: "",
     unitPrice: "",
@@ -96,19 +87,6 @@ const Sales = () => {
       .order("name");
 
     if (data) setMaterials(data);
-  };
-
-  const fetchSuppliers = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("suppliers")
-      .select("id, name")
-      .eq("user_id", user.id)
-      .order("name");
-
-    if (data) setSuppliers(data);
   };
 
   const fetchClients = async () => {
@@ -143,7 +121,6 @@ const Sales = () => {
 
   useEffect(() => {
     fetchMaterials();
-    fetchSuppliers();
     fetchClients();
     fetchSales();
   }, []);
@@ -252,7 +229,6 @@ const Sales = () => {
     const { error } = await supabase.from("sales").insert({
       user_id: user.id,
       material_id: formData.materialId,
-      supplier_id: formData.supplierId && formData.supplierId !== "none" ? formData.supplierId : null,
       quantity,
       unit_price: unitPrice,
       total_price: totalPrice,
@@ -276,7 +252,6 @@ const Sales = () => {
       setIsOpen(false);
       setFormData({
         materialId: "",
-        supplierId: "none",
         clientId: "none",
         quantity: "",
         unitPrice: "",
@@ -388,34 +363,6 @@ const Sales = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Fornecedor (opcional)</Label>
-                  <Select
-                    value={formData.supplierId}
-                    onValueChange={(value) => {
-                      if (value === "new") {
-                        setTimeout(() => setIsCreateSupplierOpen(true), 100);
-                        return;
-                      }
-                      setFormData({ ...formData, supplierId: value });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o fornecedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new" className="text-primary font-medium">
-                        + Cadastrar Novo Fornecedor
-                      </SelectItem>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <div className="space-y-2">
                   <Label>Cliente (opcional)</Label>
@@ -519,15 +466,6 @@ const Sales = () => {
         onCreated={(materialId) => {
           fetchMaterials(); // Refresh list
           setFormData({ ...formData, materialId }); // Auto-select
-        }}
-      />
-
-      <QuickCreateSupplier
-        open={isCreateSupplierOpen}
-        onOpenChange={setIsCreateSupplierOpen}
-        onCreated={(supplierId) => {
-          fetchSuppliers();
-          setFormData({ ...formData, supplierId });
         }}
       />
 

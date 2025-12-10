@@ -62,7 +62,7 @@ const AppSidebar = () => {
   }
 
   return (
-    <Sidebar collapsible="icon" className="border-r bg-card">
+    <Sidebar className="border-r bg-card w-20">
       <SidebarContent className="bg-card">
         <SidebarGroup className="bg-card">
           <SidebarGroupContent className="bg-card">
@@ -73,8 +73,8 @@ const AppSidebar = () => {
 
                 return (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.to} className="flex flex-col items-center gap-1 py-3">
+                    <SidebarMenuButton asChild isActive={isActive} className="h-auto py-2">
+                      <Link to={item.to} className="flex flex-col items-center gap-1">
                         <Icon className={`h-5 w-5 ${item.color}`} />
                         <span className="text-[10px] font-medium leading-tight text-center">{item.label}</span>
                       </Link>

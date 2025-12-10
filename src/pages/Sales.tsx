@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
 import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
+import { QuickCreateClient } from "@/components/QuickCreateClient";
 import { VoiceRecognition } from "@/components/VoiceRecognition";
 import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
@@ -25,6 +26,11 @@ interface Material {
 }
 
 interface Supplier {
+  id: string;
+  name: string;
+}
+
+interface Client {
   id: string;
   name: string;
 }
@@ -46,6 +52,7 @@ interface Sale {
 const Sales = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +62,7 @@ const Sales = () => {
   // Quick Create State
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
   const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
+  const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
 
   // NLP State
   const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
@@ -70,6 +78,7 @@ const Sales = () => {
   const [formData, setFormData] = useState({
     materialId: "",
     supplierId: "none",
+    clientId: "none",
     quantity: "",
     unitPrice: "",
     notes: "",
@@ -102,6 +111,19 @@ const Sales = () => {
     if (data) setSuppliers(data);
   };
 
+  const fetchClients = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("clients")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .order("name");
+
+    if (data) setClients(data);
+  };
+
   const fetchSales = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -122,6 +144,7 @@ const Sales = () => {
   useEffect(() => {
     fetchMaterials();
     fetchSuppliers();
+    fetchClients();
     fetchSales();
   }, []);
 
@@ -254,6 +277,7 @@ const Sales = () => {
       setFormData({
         materialId: "",
         supplierId: "none",
+        clientId: "none",
         quantity: "",
         unitPrice: "",
         notes: "",
@@ -394,6 +418,35 @@ const Sales = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Cliente (opcional)</Label>
+                  <Select
+                    value={formData.clientId}
+                    onValueChange={(value) => {
+                      if (value === "new") {
+                        setTimeout(() => setIsCreateClientOpen(true), 100);
+                        return;
+                      }
+                      setFormData({ ...formData, clientId: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new" className="text-primary font-medium">
+                        + Cadastrar Novo Cliente
+                      </SelectItem>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Quantidade*</Label>
                     {formData.materialId && (
@@ -473,8 +526,17 @@ const Sales = () => {
         open={isCreateSupplierOpen}
         onOpenChange={setIsCreateSupplierOpen}
         onCreated={(supplierId) => {
-          fetchSuppliers(); // Refresh list
-          setFormData({ ...formData, supplierId }); // Auto-select
+          fetchSuppliers();
+          setFormData({ ...formData, supplierId });
+        }}
+      />
+
+      <QuickCreateClient
+        open={isCreateClientOpen}
+        onOpenChange={setIsCreateClientOpen}
+        onCreated={(clientId) => {
+          fetchClients();
+          setFormData({ ...formData, clientId });
         }}
       />
 

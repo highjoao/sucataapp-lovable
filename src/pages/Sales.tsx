@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuickCreateMaterial } from "@/components/QuickCreateMaterial";
-import { QuickCreateSupplier } from "@/components/QuickCreateSupplier";
+import { QuickCreateClient } from "@/components/QuickCreateClient";
 import { VoiceRecognition } from "@/components/VoiceRecognition";
 import { extractEntitiesFromText, calculateConfidenceScore, getExtractionFeedback } from "@/lib/nlp";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
@@ -24,7 +24,7 @@ interface Material {
   unit_of_measure: string;
 }
 
-interface Supplier {
+interface Client {
   id: string;
   name: string;
 }
@@ -45,7 +45,7 @@ interface Sale {
 
 const Sales = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +54,7 @@ const Sales = () => {
 
   // Quick Create State
   const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
-  const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
+  const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
 
   // NLP State
   const [nlpFeedback, setNlpFeedback] = useState<string[]>([]);
@@ -69,7 +69,7 @@ const Sales = () => {
 
   const [formData, setFormData] = useState({
     materialId: "",
-    supplierId: "none",
+    clientId: "none",
     quantity: "",
     unitPrice: "",
     notes: "",
@@ -89,17 +89,17 @@ const Sales = () => {
     if (data) setMaterials(data);
   };
 
-  const fetchSuppliers = async () => {
+  const fetchClients = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data } = await supabase
-      .from("suppliers")
+      .from("clients")
       .select("id, name")
       .eq("user_id", user.id)
       .order("name");
 
-    if (data) setSuppliers(data);
+    if (data) setClients(data);
   };
 
   const fetchSales = async () => {
@@ -121,7 +121,7 @@ const Sales = () => {
 
   useEffect(() => {
     fetchMaterials();
-    fetchSuppliers();
+    fetchClients();
     fetchSales();
   }, []);
 
@@ -229,7 +229,6 @@ const Sales = () => {
     const { error } = await supabase.from("sales").insert({
       user_id: user.id,
       material_id: formData.materialId,
-      supplier_id: formData.supplierId && formData.supplierId !== "none" ? formData.supplierId : null,
       quantity,
       unit_price: unitPrice,
       total_price: totalPrice,
@@ -253,7 +252,7 @@ const Sales = () => {
       setIsOpen(false);
       setFormData({
         materialId: "",
-        supplierId: "none",
+        clientId: "none",
         quantity: "",
         unitPrice: "",
         notes: "",
@@ -364,29 +363,30 @@ const Sales = () => {
                   </Select>
                 </div>
 
+
                 <div className="space-y-2">
-                  <Label>Fornecedor (opcional)</Label>
+                  <Label>Cliente (opcional)</Label>
                   <Select
-                    value={formData.supplierId}
+                    value={formData.clientId}
                     onValueChange={(value) => {
                       if (value === "new") {
-                        setTimeout(() => setIsCreateSupplierOpen(true), 100);
+                        setTimeout(() => setIsCreateClientOpen(true), 100);
                         return;
                       }
-                      setFormData({ ...formData, supplierId: value });
+                      setFormData({ ...formData, clientId: value });
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o fornecedor" />
+                      <SelectValue placeholder="Selecione o cliente" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="new" className="text-primary font-medium">
-                        + Cadastrar Novo Fornecedor
+                        + Cadastrar Novo Cliente
                       </SelectItem>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -469,12 +469,12 @@ const Sales = () => {
         }}
       />
 
-      <QuickCreateSupplier
-        open={isCreateSupplierOpen}
-        onOpenChange={setIsCreateSupplierOpen}
-        onCreated={(supplierId) => {
-          fetchSuppliers(); // Refresh list
-          setFormData({ ...formData, supplierId }); // Auto-select
+      <QuickCreateClient
+        open={isCreateClientOpen}
+        onOpenChange={setIsCreateClientOpen}
+        onCreated={(clientId) => {
+          fetchClients();
+          setFormData({ ...formData, clientId });
         }}
       />
 

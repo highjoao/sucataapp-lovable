@@ -62,8 +62,8 @@ const AppSidebar = () => {
   }
 
   return (
-    <Sidebar className="border-r bg-card w-20">
-      <SidebarContent className="bg-card">
+    <Sidebar className="border-r bg-card" collapsible="none">
+      <SidebarContent className="bg-card pt-4">
         <SidebarGroup className="bg-card">
           <SidebarGroupContent className="bg-card">
             <SidebarMenu>
@@ -73,15 +73,10 @@ const AppSidebar = () => {
 
                 return (
                   <SidebarMenuItem key={item.to}>
-<<<<<<< HEAD
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label} className="justify-start">
-                      <Link to={item.to} className="flex w-full items-center gap-3 px-2">
-=======
-                    <SidebarMenuButton asChild isActive={isActive} className="h-auto py-2">
-                      <Link to={item.to} className="flex flex-col items-center gap-1">
->>>>>>> db0f1eb2af9fa507f0606a1a5ea1c52a25bdda2e
+                    <SidebarMenuButton asChild isActive={isActive} className="justify-start">
+                      <Link to={item.to} className="flex w-full items-center gap-3 px-3">
                         <Icon className={`h-5 w-5 ${item.color}`} />
-                        <span className="text-[10px] font-medium leading-tight text-center">{item.label}</span>
+                        <span className="text-sm font-medium">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

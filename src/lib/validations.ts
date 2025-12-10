@@ -34,6 +34,26 @@ export const supplierSchema = z.object({
 
 export type SupplierFormData = z.infer<typeof supplierSchema>;
 
+// Client validation schema
+export const clientSchema = z.object({
+  name: z.string()
+    .min(1, "Nome do cliente é obrigatório")
+    .max(100, "Nome deve ter no máximo 100 caracteres")
+    .trim(),
+  phone: z.string()
+    .max(20, "Telefone deve ter no máximo 20 caracteres")
+    .trim()
+    .optional()
+    .or(z.literal("")),
+  address: z.string()
+    .max(255, "Endereço deve ter no máximo 255 caracteres")
+    .trim()
+    .optional()
+    .or(z.literal("")),
+});
+
+export type ClientFormData = z.infer<typeof clientSchema>;
+
 // Transaction validation schema
 export const transactionSchema = z.object({
   type: z.enum(["BUY", "SELL"], {

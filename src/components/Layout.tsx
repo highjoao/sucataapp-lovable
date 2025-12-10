@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   Boxes,
   Truck,
+  Users,
   LayoutDashboard,
   DollarSign,
   Shield
@@ -50,6 +51,7 @@ const AppSidebar = () => {
     { to: "/sales", icon: TrendingUp, label: "Vendas", color: "text-green-500" },
     { to: "/transactions", icon: ArrowLeftRight, label: "Movimentações", color: "text-purple-500" },
     { to: "/stock", icon: Package, label: "Estoque", color: "text-amber-500" },
+    { to: "/clients", icon: Users, label: "Clientes", color: "text-indigo-500" },
     { to: "/suppliers", icon: Truck, label: "Fornecedores", color: "text-cyan-500" },
     { to: "/materials", icon: Boxes, label: "Materiais", color: "text-pink-500" },
   ];

@@ -16,6 +16,7 @@ import Stock from "./pages/Stock";
 import Transactions from "./pages/Transactions";
 import NewTransactions from "./pages/NewTransactions";
 import Materials from "./pages/Materials";
+import Clients from "./pages/Clients";
 import Suppliers from "./pages/Suppliers";
 import CashFlow from "./pages/CashFlow";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/clients" element={<Clients />} />
             <Route path="/materials" element={<Materials />} />
             <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/purchases" element={<Purchases />} />

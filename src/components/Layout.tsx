@@ -61,8 +61,11 @@ const AppSidebar = () => {
     navItems.push({ to: "/admin/users", icon: Shield, label: "Admin", color: "text-red-500" });
   }
 
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
   return (
-    <Sidebar className="border-r bg-card" collapsible="none">
+    <Sidebar className="border-r bg-card" collapsible="icon">
       <SidebarContent className="bg-card pt-4">
         <SidebarGroup className="bg-card">
           <SidebarGroupContent className="bg-card">
@@ -73,10 +76,10 @@ const AppSidebar = () => {
 
                 return (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild isActive={isActive} className="justify-start">
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label} className="justify-start">
                       <Link to={item.to} className="flex w-full items-center gap-3 px-3">
-                        <Icon className={`h-5 w-5 ${item.color}`} />
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <Icon className={`h-5 w-5 shrink-0 ${item.color}`} />
+                        {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

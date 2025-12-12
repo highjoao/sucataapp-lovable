@@ -12,7 +12,7 @@ export type AdminUser = {
     subscriptions: {
         plan_type: string;
         status: string;
-    } | null; // Assuming one-to-one or taking the first one
+    } | null;
 };
 
 export const useAdmin = () => {
@@ -22,26 +22,42 @@ export const useAdmin = () => {
     const { data: users = [], isLoading } = useQuery({
         queryKey: ["admin-users"],
         queryFn: async () => {
-            // Fetch profiles and join with subscriptions
-            // Note: This requires the foreign key relationship to be detected by Supabase client
-            // If not, we might need to fetch separately or use a view.
-            // Assuming 'subscriptions' has user_id FK to profiles(id)
-            const { data, error } = await supabase
+            // Fetch profiles with subscriptions
+            const { data: profiles, error: profilesError } = await supabase
                 .from("profiles")
                 .select(`
-          *,
-          subscriptions (
-            plan_type,
-            status
-          )
-        `)
+                    *,
+                    subscriptions (
+                        plan_type,
+                        status
+                    )
+                `)
                 .order("created_at", { ascending: false });
 
-            if (error) throw error;
+            if (profilesError) throw profilesError;
 
-            // Transform data to flatten subscription (take the first one if array)
-            return data.map((user: any) => ({
+            // Fetch all user roles from the separate user_roles table
+            const { data: userRoles, error: rolesError } = await supabase
+                .from("user_roles")
+                .select("user_id, role");
+
+            if (rolesError) throw rolesError;
+
+            // Create a map of user_id to role
+            const roleMap = new Map<string, string>();
+            userRoles?.forEach((ur: any) => {
+                // If user has admin role, mark as admin
+                if (ur.role === "admin") {
+                    roleMap.set(ur.user_id, "admin");
+                } else if (!roleMap.has(ur.user_id)) {
+                    roleMap.set(ur.user_id, ur.role);
+                }
+            });
+
+            // Transform data to include role from user_roles table
+            return profiles.map((user: any) => ({
                 ...user,
+                role: roleMap.get(user.id) || "user",
                 subscriptions: user.subscriptions?.[0] || user.subscriptions || null,
             })) as AdminUser[];
         },
@@ -67,12 +83,23 @@ export const useAdmin = () => {
 
     const updateUserRole = useMutation({
         mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "user" }) => {
-            const { error } = await supabase
-                .from("profiles")
-                .update({ role })
-                .eq("id", userId);
+            if (role === "admin") {
+                // Add admin role
+                const { error } = await supabase
+                    .from("user_roles")
+                    .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // Remove admin role
+                const { error } = await supabase
+                    .from("user_roles")
+                    .delete()
+                    .eq("user_id", userId)
+                    .eq("role", "admin");
+
+                if (error) throw error;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-users"] });

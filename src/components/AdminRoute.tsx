@@ -15,11 +15,8 @@ export const AdminRoute = () => {
                 return;
             }
 
-            const { data: profile, error } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", user.id)
-                .single();
+            // Use the secure is_admin() database function
+            const { data, error } = await supabase.rpc("is_admin", { user_id: user.id });
 
             if (error) {
                 console.error("Error checking admin status:", error);
@@ -27,15 +24,10 @@ export const AdminRoute = () => {
                 return;
             }
 
-            // @ts-ignore - 'role' might not be in the generated types yet
-            if (profile?.role === "admin") {
+            if (data === true) {
                 setIsAdmin(true);
             } else {
                 setIsAdmin(false);
-                // Only show toast if we are actually blocking access (i.e. not just initial load)
-                // But here we are inside the effect, so it runs once.
-                // We might want to avoid showing toast on every mount if the user is just navigating elsewhere,
-                // but since this component wraps the route, it only mounts when trying to access the route.
                 toast({
                     title: "Acesso Negado",
                     description: "Você não tem permissão de administrador.",
